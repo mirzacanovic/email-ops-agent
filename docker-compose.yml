@@ -1,0 +1,102 @@
+name: email-ops-agent
+
+services:
+  app-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${APP_DB_USER}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
+      POSTGRES_DB: ${APP_DB_NAME}
+    volumes:
+      - app_db_data:/var/lib/postgresql/data
+    ports:
+      - "${APP_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${APP_DB_USER} -d ${APP_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8082}:8080"
+    depends_on:
+      - app-db
+
+  email-simulator:
+    build: ./email-simulator
+    restart: unless-stopped
+    ports:
+      - "${EMAIL_SIM_PORT:-8001}:8001"
+    volumes:
+      - ./email-simulator/src/email_simulator/fixtures:/app/fixtures:ro
+
+  app:
+    build: ./app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${APP_DB_USER}:${APP_DB_PASSWORD}@app-db:5432/${APP_DB_NAME}
+      EMAIL_SIMULATOR_URL: http://email-simulator:8001
+      ESPOCRM_BASE_URL: http://espocrm:80
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    depends_on:
+      app-db:
+        condition: service_healthy
+      email-simulator:
+        condition: service_started
+
+  espocrm-db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${ESPOCRM_DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${ESPOCRM_DB_NAME}
+      MARIADB_USER: ${ESPOCRM_DB_USER}
+      MARIADB_PASSWORD: ${ESPOCRM_DB_PASSWORD}
+    volumes:
+      - espocrm_db_data:/var/lib/mysql
+
+  espocrm:
+    image: espocrm/espocrm:latest
+    restart: unless-stopped
+    environment:
+      ESPOCRM_DATABASE_HOST: espocrm-db
+      ESPOCRM_DATABASE_USER: ${ESPOCRM_DB_USER}
+      ESPOCRM_DATABASE_PASSWORD: ${ESPOCRM_DB_PASSWORD}
+      ESPOCRM_ADMIN_USERNAME: ${ESPOCRM_ADMIN_USERNAME}
+      ESPOCRM_ADMIN_PASSWORD: ${ESPOCRM_ADMIN_PASSWORD}
+      ESPOCRM_SITE_URL: ${ESPOCRM_SITE_URL}
+    volumes:
+      - espocrm_data:/var/www/html/data
+      - espocrm_custom:/var/www/html/custom
+    ports:
+      - "${ESPOCRM_PORT:-8080}:80"
+    depends_on:
+      - espocrm-db
+
+  # Runs EspoCRM's scheduled jobs (workflows, notifications). Not required
+  # for the Phase 1 demo loop, but cheap to include so the CRM behaves
+  # normally if you poke around in it manually.
+  espocrm-daemon:
+    image: espocrm/espocrm-daemon:latest
+    restart: unless-stopped
+    environment:
+      ESPOCRM_DATABASE_HOST: espocrm-db
+      ESPOCRM_DATABASE_USER: ${ESPOCRM_DB_USER}
+      ESPOCRM_DATABASE_PASSWORD: ${ESPOCRM_DB_PASSWORD}
+    volumes:
+      - espocrm_data:/var/www/html/data
+      - espocrm_custom:/var/www/html/custom
+    depends_on:
+      - espocrm-db
+
+volumes:
+  app_db_data:
+  espocrm_db_data:
+  espocrm_data:
+  espocrm_custom:

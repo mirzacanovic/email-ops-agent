@@ -1,0 +1,8 @@
+{
+  "id": "msg-001",
+  "from": "jordan.lee@northwind-supply.com",
+  "to": "support@demo-company.test",
+  "subject": "Export button throws an error on the reports page",
+  "body": "Hi team,\n\nWhen I click 'Export to CSV' on the monthly reports page I get a blank white screen and nothing downloads. This started happening yesterday afternoon. I'm on Chrome, Windows 11. Can someone take a look? This is blocking our month-end close.\n\nThanks,\nJordan Lee\nNorthwind Supply Co.",
+  "received_at": "2026-09-15T09:12:00Z"
+}

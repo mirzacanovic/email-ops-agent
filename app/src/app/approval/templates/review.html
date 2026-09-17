@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pending approvals — Email Ops Agent</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
+    .action { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    .action h3 { margin: 0 0 0.5rem; }
+    .meta { color: #666; font-size: 0.85rem; }
+    pre { background: #f6f6f6; padding: 0.75rem; border-radius: 6px; overflow-x: auto; }
+    .buttons button { margin-right: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Pending approvals</h1>
+
+  {% if not pending %}
+    <p>Nothing waiting on review yet. Send an email through the simulator to get started.</p>
+  {% endif %}
+
+  {% for action in pending %}
+    <div class="action">
+      <h3>{{ action.action_type }} → {{ action.target_system }} / {{ action.entity_type }}</h3>
+      <p class="meta">confidence {{ "%.0f"|format(action.confidence * 100) }}% — {{ action.created_at }}</p>
+      <p>{{ action.rationale }}</p>
+      <pre>{{ action.fields }}</pre>
+      <div class="buttons">
+        <form method="post" action="/approvals/{{ action.id }}/approve" style="display:inline">
+          <button type="submit">Approve</button>
+        </form>
+        <form method="post" action="/approvals/{{ action.id }}/reject" style="display:inline">
+          <button type="submit">Reject</button>
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+</body>
+</html>

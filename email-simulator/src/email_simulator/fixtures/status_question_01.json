@@ -1,0 +1,8 @@
+{
+  "id": "msg-003",
+  "from": "jordan.lee@northwind-supply.com",
+  "to": "support@demo-company.test",
+  "subject": "Re: Export button throws an error on the reports page",
+  "body": "Hi again,\n\nJust checking in on this — is there any update on the CSV export issue I reported? It's now been two days and our finance team still can't pull the reports they need.\n\nThanks,\nJordan",
+  "received_at": "2026-09-17T08:30:00Z"
+}
