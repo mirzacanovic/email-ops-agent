@@ -18,7 +18,15 @@ class Settings(BaseSettings):
     plane_api_key: str = ""
     plane_workspace_slug: str = ""
 
+    # "ollama" (default) keeps email content on-prem; "claude" is a
+    # fast-POC fallback for clients without a data-residency constraint.
+    # See app/src/app/llm/ — pipeline code depends only on LLMClient,
+    # never on either backend directly.
+    llm_provider: str = "ollama"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "mistral:7b-instruct"
     anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-5"
 
 
 @lru_cache

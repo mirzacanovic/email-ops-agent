@@ -12,12 +12,16 @@ Demo stack (Phase 1):
 - **EspoCRM** — CRM (contacts, leads, accounts).
 - **Plane** — project management (issues) — run separately, see
   [docs/plane-setup.md](docs/plane-setup.md).
+- **Ollama** — self-hosted, open-weight model (Mistral by default) for
+  classify/extract, so email content never leaves the stack. See
+  [docs/llm-backend.md](docs/llm-backend.md).
 - **app** — the orchestrator: classification/extraction, record matching,
   action proposal, approval UI, execution, audit log.
 
 See [docs/architecture.md](docs/architecture.md) for how the pieces fit
-together and [docs/plane-setup.md](docs/plane-setup.md) for why Plane isn't
-in `docker-compose.yml`.
+together, [docs/plane-setup.md](docs/plane-setup.md) for why Plane isn't
+in `docker-compose.yml`, and [docs/llm-backend.md](docs/llm-backend.md)
+for the LLM backend choice.
 
 ## Repo layout
 
@@ -28,6 +32,7 @@ email-ops-agent/
 ├── app/                      # orchestrator: FastAPI service
 │   └── src/app/
 │       ├── connectors/       # one interface, one adapter per SaaS system
+│       ├── llm/              # one interface, one adapter per model backend (Ollama/Claude)
 │       ├── pipeline/         # classify -> extract -> match -> propose -> execute
 │       ├── approval/         # human-in-the-loop review UI
 │       ├── audit/            # audit-log models
@@ -40,13 +45,17 @@ email-ops-agent/
 
 ## Quickstart
 
-1. Copy `.env.example` to `.env` and fill in `ANTHROPIC_API_KEY` (and
-   `PLANE_*` once you've stood up Plane — see docs/plane-setup.md).
-2. `docker compose up --build`
+1. Copy `.env.example` to `.env` (defaults use the self-hosted Ollama
+   backend, so `ANTHROPIC_API_KEY` is only needed if you set
+   `LLM_PROVIDER=claude`; fill in `PLANE_*` once you've stood up Plane —
+   see docs/plane-setup.md).
+2. `docker compose up --build` — first run also pulls the Ollama model
+   (a few GB), which takes a few minutes; `ollama-pull` exits when done.
 3. EspoCRM: http://localhost:8080 (admin / value of `ESPOCRM_ADMIN_PASSWORD`)
 4. Email simulator: http://localhost:8001/docs
 5. Orchestrator API: http://localhost:8000/docs
-6. Adminer (DB browser, for watching the audit trail fill up live):
+6. Ollama: http://localhost:11434 (`GET /api/tags` to confirm the model pulled)
+7. Adminer (DB browser, for watching the audit trail fill up live):
    http://localhost:8082 — system: PostgreSQL, server: `app-db`
 
 ## Status

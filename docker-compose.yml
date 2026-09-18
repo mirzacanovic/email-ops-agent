@@ -42,6 +42,9 @@ services:
       DATABASE_URL: postgresql+psycopg://${APP_DB_USER}:${APP_DB_PASSWORD}@app-db:5432/${APP_DB_NAME}
       EMAIL_SIMULATOR_URL: http://email-simulator:8001
       ESPOCRM_BASE_URL: http://espocrm:80
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral:7b-instruct}
     ports:
       - "${APP_PORT:-8000}:8000"
     depends_on:
@@ -49,6 +52,49 @@ services:
         condition: service_healthy
       email-simulator:
         condition: service_started
+      ollama:
+        condition: service_started
+
+  # Self-hosted, open-weight LLM for classify/extract — keeps inbound
+  # email content off any third-party API, which is the point for
+  # clients under EU data-residency constraints. Swappable for Claude
+  # via LLM_PROVIDER for POCs that don't have that constraint; see
+  # app/src/app/llm/.
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Runs on CPU by default, which is fine for a 7B model at demo
+    # scale (just slower). For a real deployment, uncomment to pass
+    # through an NVIDIA GPU (requires the NVIDIA Container Toolkit
+    # on the host):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # One-shot: pulls the model into ollama's volume on first run, then
+  # exits. Re-running docker compose up is a no-op once the model is
+  # cached (Ollama skips the pull if it's already present).
+  ollama-pull:
+    image: curlimages/curl:latest
+    restart: "no"
+    depends_on:
+      - ollama
+    entrypoint: ["/bin/sh", "-c"]
+    # A single list item so the whole script is one argv element for
+    # `-c` — a plain (non-list) command would get re-split on
+    # whitespace by Compose and break the sh -c invocation.
+    command:
+      - >-
+        until curl -sf http://ollama:11434/api/tags >/dev/null; do sleep 2; done;
+        curl -s http://ollama:11434/api/pull -d '{"model":"${OLLAMA_MODEL:-mistral:7b-instruct}"}'
 
   espocrm-db:
     image: mariadb:11
@@ -100,3 +146,4 @@ volumes:
   espocrm_db_data:
   espocrm_data:
   espocrm_custom:
+  ollama_data:

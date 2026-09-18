@@ -17,6 +17,12 @@ Email simulator ──▶ ingestion ──▶ classify ──▶ extract ──�
 
 ## Design decisions
 
+- **One LLM interface, one adapter per backend**
+  (`app/src/app/llm/base.py`). classify/extract depend only on
+  `LLMClient.complete_json`, never on Ollama or Claude directly — see
+  [docs/llm-backend.md](llm-backend.md) for why the default backend is a
+  self-hosted open-weight model rather than a cloud API.
+
 - **One connector interface, one adapter per system**
   (`app/src/app/connectors/base.py`). `search_records` / `create_record` /
   `update_record` / `get_schema` are the only methods the pipeline calls.
