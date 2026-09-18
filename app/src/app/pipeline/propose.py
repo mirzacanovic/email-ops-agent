@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any
 
+from app.pipeline.match import CandidateMatch
+
 
 @dataclass
 class ProposedActionDraft:
@@ -16,7 +18,7 @@ class ProposedActionDraft:
 async def propose_action(
     intent: str,
     extracted_fields: dict[str, Any],
-    candidate_matches: list[dict[str, Any]],
+    candidate_matches: list[CandidateMatch],
 ) -> ProposedActionDraft:
     """Decide what action to propose given the extraction + search results.
 

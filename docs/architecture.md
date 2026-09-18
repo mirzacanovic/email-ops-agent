@@ -28,6 +28,17 @@ Email simulator ──▶ ingestion ──▶ classify ──▶ extract ──�
   `update_record` / `get_schema` are the only methods the pipeline calls.
   Adding Zammad or ERPNext later — or swapping EspoCRM for a client's real
   Salesforce — means writing a new adapter, not touching the pipeline.
+  `get_schema` always returns real JSON Schema, narrowed to a
+  per-entity allowlist of fields (see `EXTRACTABLE_FIELDS` in
+  `connectors/espocrm.py`) — extraction is never exposed to a system's
+  full internal field set, only the ones it's safe to fill from email
+  content.
+
+- **Matching is two passes, both logged** (`app/src/app/pipeline/match.py`):
+  exact match on sender email first, then a fuzzy pass on account/company
+  name via the connector's `_fulltext` search convention, scored locally
+  with `difflib`. Every candidate considered is kept, not just the best
+  one, so a human reviewer can see what else was close.
 
 - **Every pipeline stage is a separate, inspectable function**
   (`app/src/app/pipeline/*.py`) rather than one opaque agent loop. Each

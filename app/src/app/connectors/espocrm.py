@@ -4,6 +4,48 @@ import httpx
 
 from app.connectors.base import SystemConnector
 
+# EspoCRM's Metadata API returns dozens of fields per entity (id,
+# createdAt, modifiedById, versionNumber, ...) that extraction must never
+# be allowed to invent values for. This is the allowlist of fields
+# extraction is allowed to fill in per entity type; get_schema() only
+# ever exposes these.
+EXTRACTABLE_FIELDS: dict[str, list[str]] = {
+    "Contact": [
+        "firstName",
+        "lastName",
+        "emailAddress",
+        "phoneNumber",
+        "accountName",
+        "description",
+    ],
+    "Lead": [
+        "firstName",
+        "lastName",
+        "emailAddress",
+        "phoneNumber",
+        "accountName",
+        "description",
+        "source",
+    ],
+}
+
+# EspoCRM field type -> JSON Schema fragment. Unlisted types (e.g. link
+# fields other than the denormalized *Name ones) fall back to "string".
+ESPOCRM_TYPE_MAP: dict[str, dict[str, Any]] = {
+    "varchar": {"type": "string"},
+    "text": {"type": "string"},
+    "wysiwyg": {"type": "string"},
+    "url": {"type": "string"},
+    "email": {"type": "string"},
+    "phone": {"type": "string"},
+    "int": {"type": "integer"},
+    "float": {"type": "number"},
+    "currency": {"type": "number"},
+    "bool": {"type": "boolean"},
+    "date": {"type": "string", "format": "date"},
+    "datetime": {"type": "string", "format": "date-time"},
+}
+
 
 class EspoCRMConnector(SystemConnector):
     """Adapter for EspoCRM's REST API (https://docs.espocrm.com/development/api/).
@@ -21,9 +63,29 @@ class EspoCRMConnector(SystemConnector):
     async def search_records(
         self, entity_type: str, query: dict[str, Any]
     ) -> list[dict[str, Any]]:
-        # TODO(phase-1): translate `query` into EspoCRM's `where[]` array
-        # syntax instead of passing raw params through.
-        response = await self._client.get(f"/{entity_type}", params=query)
+        """`query` keys are translated into EspoCRM's `where[]` equals-filter
+        array, e.g. `{"emailAddress": "x@y.com"}` becomes
+        `where[0][type]=equals&where[0][attribute]=emailAddress&where[0][value]=x@y.com`.
+
+        The reserved key `_fulltext` maps instead to EspoCRM's server-side
+        `textFilter`, which matches across the entity's configured
+        name/search fields — used for the fuzzy-name pass in
+        `pipeline.match`, since scanning every record client-side wouldn't
+        scale past demo-sized data.
+        """
+        params: list[tuple[str, str]] = [("maxSize", "50")]
+        where_index = 0
+        for attribute, value in query.items():
+            if attribute == "_fulltext":
+                continue
+            params.append((f"where[{where_index}][type]", "equals"))
+            params.append((f"where[{where_index}][attribute]", attribute))
+            params.append((f"where[{where_index}][value]", str(value)))
+            where_index += 1
+        if "_fulltext" in query:
+            params.append(("textFilter", str(query["_fulltext"])))
+
+        response = await self._client.get(f"/{entity_type}", params=params)
         response.raise_for_status()
         return response.json().get("list", [])
 
@@ -42,6 +104,28 @@ class EspoCRMConnector(SystemConnector):
         return response.json()
 
     async def get_schema(self, entity_type: str) -> dict[str, Any]:
+        """Return a JSON Schema built from EspoCRM's own metadata, narrowed
+        to EXTRACTABLE_FIELDS so the extraction stage can only ever
+        produce fields this entity actually has and that are safe to
+        fill from email content.
+        """
         response = await self._client.get("/Metadata")
         response.raise_for_status()
-        return response.json().get("entityDefs", {}).get(entity_type, {})
+        field_defs: dict[str, Any] = (
+            response.json().get("entityDefs", {}).get(entity_type, {}).get("fields", {})
+        )
+        allowed_fields = EXTRACTABLE_FIELDS.get(entity_type, list(field_defs.keys()))
+
+        properties: dict[str, Any] = {}
+        for field_name in allowed_fields:
+            field_def = field_defs.get(field_name)
+            if field_def is None:
+                continue
+            if field_def.get("type") == "enum" and field_def.get("options"):
+                properties[field_name] = {"type": "string", "enum": field_def["options"]}
+            else:
+                properties[field_name] = ESPOCRM_TYPE_MAP.get(
+                    field_def.get("type", ""), {"type": "string"}
+                )
+
+        return {"type": "object", "properties": properties, "additionalProperties": False}

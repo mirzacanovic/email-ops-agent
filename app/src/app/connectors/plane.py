@@ -50,11 +50,29 @@ class PlaneConnector(SystemConnector):
         return response.json()
 
     async def get_schema(self, entity_type: str) -> dict[str, Any]:
-        # TODO(phase-1): Plane doesn't expose a field-schema endpoint the
-        # way EspoCRM does; derive the allowed fields (state, priority,
-        # labels) from `/projects/{project_id}/` and its states/labels
-        # sub-resources instead.
-        return {}
+        """Plane has no field-schema endpoint like EspoCRM's Metadata API,
+        and `entity_type` (a project) doesn't change what fields an issue
+        has, so this is a static schema rather than a lookup.
+
+        Deliberately excludes state and assignee: both are IDs scoped to
+        this workspace/project (from `/projects/{id}/states/` and
+        `/members/`), not something extraction should invent from email
+        text — the propose stage resolves those from business rules
+        (e.g. "new issues start in the backlog state") instead.
+        """
+        return {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Concise issue title"},
+                "description_html": {"type": "string", "description": "Issue body"},
+                "priority": {
+                    "type": "string",
+                    "enum": ["urgent", "high", "medium", "low", "none"],
+                },
+            },
+            "required": ["name"],
+            "additionalProperties": False,
+        }
 
     @staticmethod
     def _project_id(entity_type: str) -> str:

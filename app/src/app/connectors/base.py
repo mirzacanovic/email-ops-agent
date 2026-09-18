@@ -16,7 +16,16 @@ class SystemConnector(ABC):
     async def search_records(
         self, entity_type: str, query: dict[str, Any]
     ) -> list[dict[str, Any]]:
-        """Return records of `entity_type` matching `query`."""
+        """Return records of `entity_type` matching `query`.
+
+        `query` keys are equals-filters on that field (adapters translate
+        them into whatever filter syntax the underlying API needs). The
+        reserved key `_fulltext` is a hint to use the system's own
+        full-text/keyword search instead of an exact match, when it has
+        one — used for fuzzy matching (e.g. a company name spelled
+        slightly differently than what's on file) without pulling every
+        record client-side. Adapters that don't support it may ignore it.
+        """
 
     @abstractmethod
     async def create_record(
