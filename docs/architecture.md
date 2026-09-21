@@ -46,8 +46,19 @@ Email simulator ──▶ ingestion ──▶ classify ──▶ extract ──�
   client) can see exactly why the agent proposed what it proposed.
 
 - **Nothing touches Plane or EspoCRM without a human approval row.**
-  The `execute` stage only runs against a `ProposedAction` that has an
-  `approved` status in the audit DB (see `app/src/app/audit/models.py`).
+  `POST /approvals/{id}/approve` writes the `ApprovalDecision` row first,
+  then calls `execute_action` — a rejection or an unreviewed proposal
+  never reaches `execute.py` at all. A failed execution is caught and
+  recorded as a failed `ExecutionResult` rather than raising, so the
+  audit trail shows the failure instead of a crashed request.
+
+- **Some intents deliberately produce no action.** `propose_action`
+  returns `action_type="escalate"` for any intent with no route in
+  `ingestion.inbox_poller.INTENT_ROUTES` (e.g.
+  `project_status_question`, which would need Plane issue-matching that
+  isn't built yet) rather than guessing. `execute_action` treats
+  `escalate` as a no-op — approving it just records that a human will
+  handle it outside this system.
 
 - **The email simulator is a separate service, not a module**, so it can
   later be swapped for a real IMAP/webhook listener without touching the

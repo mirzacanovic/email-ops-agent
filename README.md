@@ -52,14 +52,27 @@ email-ops-agent/
 2. `docker compose up --build` — first run also pulls the Ollama model
    (a few GB), which takes a few minutes; `ollama-pull` exits when done.
 3. EspoCRM: http://localhost:8080 (admin / value of `ESPOCRM_ADMIN_PASSWORD`)
+   — generate an API key under Administration → API Users and set
+   `ESPOCRM_API_KEY`, then run `python scripts/seed_espocrm.py`.
 4. Email simulator: http://localhost:8001/docs
 5. Orchestrator API: http://localhost:8000/docs
 6. Ollama: http://localhost:11434 (`GET /api/tags` to confirm the model pulled)
 7. Adminer (DB browser, for watching the audit trail fill up live):
    http://localhost:8082 — system: PostgreSQL, server: `app-db`
+8. Run the pipeline: `curl -X POST http://localhost:8000/ingest/poll` pulls
+   whatever's new from the email simulator through
+   classify → extract → match → propose.
+9. Review proposals: http://localhost:8000/approvals — approve calls the
+   target system's API for real (EspoCRM if `ESPOCRM_API_KEY` is set;
+   Plane if `PLANE_*` is configured), reject just records the decision.
 
 ## Status
 
-Phase 0 scaffold — services boot and health-check, connector interface and
-audit schema are in place, but the classify/extract/match/propose/execute
-pipeline steps are stubs. See inline `TODO(phase-1)` markers.
+Phase 1 — the full loop runs end to end: an email from the simulator is
+classified, extracted into a system-appropriate schema, matched against
+existing EspoCRM records, proposed as an action, and — once approved
+through the review UI — executed against EspoCRM/Plane, with every stage
+recorded in the audit DB. Known gaps, called out inline as
+`TODO(phase-2)`: no dedup against existing Plane issues (support
+requests always propose *create*), no real auth on the approval UI, and
+schema migrations are `create_all` rather than Alembic.

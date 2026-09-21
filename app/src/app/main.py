@@ -3,9 +3,11 @@ from fastapi import FastAPI
 from app.approval.routes import router as approval_router
 from app.audit.models import Base
 from app.db.session import engine
+from app.ingestion.routes import router as ingestion_router
 
 app = FastAPI(title="Email Ops Agent")
 app.include_router(approval_router)
+app.include_router(ingestion_router)
 
 
 @app.on_event("startup")

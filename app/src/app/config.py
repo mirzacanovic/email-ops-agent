@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     plane_api_base_url: str = "https://api.plane.so"
     plane_api_key: str = ""
     plane_workspace_slug: str = ""
+    # Which project new support-request issues get filed into (from the
+    # project's URL/settings in the Plane UI). A real multi-project setup
+    # would derive this from the email rather than hardcoding one project.
+    plane_default_project_id: str = ""
 
     # "ollama" (default) keeps email content on-prem; "claude" is a
     # fast-POC fallback for clients without a data-residency constraint.

@@ -5,17 +5,25 @@ from app.pipeline.propose import ProposedActionDraft
 
 
 async def execute_action(
-    connector: SystemConnector, action: ProposedActionDraft
+    connector: SystemConnector | None, action: ProposedActionDraft
 ) -> dict[str, Any]:
-    """Execute an approved action through `connector`.
+    """Execute an approved action.
 
     Must only ever be called with an action that has a corresponding
     approved `ApprovalDecision` row — the caller (approval routes) is
-    responsible for enforcing that, this function assumes it's already
-    true. TODO(phase-1): wrap in a try/except that writes a failed
-    ExecutionResult row instead of raising, so failures show up in the
-    audit trail rather than crashing the request.
+    responsible for enforcing that and for turning a raised exception
+    into a failed `ExecutionResult` row rather than a crashed request.
+
+    `connector` is None only for `escalate` actions, which never call an
+    API — approval just acknowledges that a human will handle it outside
+    this system.
     """
+    if action.action_type == "escalate":
+        return {"note": "no API call made — escalated for manual handling"}
+
+    if connector is None:
+        raise ValueError(f"No connector configured for target_system {action.target_system!r}")
+
     if action.action_type == "create_record":
         return await connector.create_record(action.entity_type, action.fields)
     if action.action_type == "update_record":

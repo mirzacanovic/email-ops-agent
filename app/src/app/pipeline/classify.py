@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from app.llm.base import LLMClient
 
@@ -23,16 +24,13 @@ SYSTEM_PROMPT = (
 class Classification:
     intent: str
     confidence: float
+    raw: dict[str, Any]  # the model's unmodified response, for the audit trail
 
 
 async def classify(llm: LLMClient, email_subject: str, email_body: str) -> Classification:
     """Classify the email's intent using whichever LLMClient is configured
     (Ollama-served open model by default, Claude if LLM_PROVIDER=claude).
-
-    TODO(phase-1): have the caller (inbox_poller) persist the raw
-    `result` dict into ExtractionResult.model_raw_response before this
-    function discards it down to just intent/confidence.
     """
     user_prompt = f"Subject: {email_subject}\n\nBody:\n{email_body}"
     result = await llm.complete_json(SYSTEM_PROMPT, user_prompt, CLASSIFY_SCHEMA)
-    return Classification(intent=result["intent"], confidence=result["confidence"])
+    return Classification(intent=result["intent"], confidence=result["confidence"], raw=result)
