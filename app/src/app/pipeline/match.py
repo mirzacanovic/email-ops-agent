@@ -8,7 +8,7 @@ from app.connectors.base import SystemConnector
 @dataclass
 class CandidateMatch:
     record: dict[str, Any]
-    match_reason: str  # "exact_email" | "fuzzy_name"
+    match_reason: str  # "exact_email" | "fuzzy_name" | "fuzzy_title"
     score: float  # 0..1, 1.0 = exact
 
 
@@ -33,11 +33,9 @@ async def find_candidate_matches(
     so the audit trail (and a human reviewer) can see what else was
     close before the propose stage picks one.
 
-    TODO(phase-1/2): this exact-email + fuzzy-account-name scheme fits
-    CRM-style entities (EspoCRM Contact/Lead). Matching Plane issues
-    (e.g. "is this the same bug already reported") needs a different
-    scheme — keyword search against issue titles — reusing the same
-    CandidateMatch shape.
+    This exact-email + fuzzy-account-name scheme fits CRM-style entities
+    (EspoCRM Contact/Lead). See `find_similar_issues` below for Plane's
+    different matching scheme.
     """
     candidates: list[CandidateMatch] = []
 
@@ -57,6 +55,48 @@ async def find_candidate_matches(
                 CandidateMatch(record=record, match_reason="fuzzy_name", score=score)
             )
 
+    return sorted(candidates, key=lambda c: c.score, reverse=True)
+
+
+async def find_similar_issues(
+    connector: SystemConnector,
+    entity_type: str,
+    candidate_title: str,
+    sender_email: str,
+) -> list[CandidateMatch]:
+    """Search for existing Plane issues that might already cover the same
+    problem as a new support request, so a follow-up ("any update on the
+    CSV export bug?") updates the existing issue instead of filing a
+    duplicate.
+
+    Plane's work-items list endpoint has no full-text search (no
+    `_fulltext`-equivalent — PlaneConnector doesn't support that
+    convention), so this narrows to a small candidate set a different
+    way: every issue this pipeline previously created is tagged with
+    `external_id=<sender email>` (see propose.py's use of
+    `connectors.plane.EXTERNAL_SOURCE`) at creation time, and Plane's
+    list endpoint documents `external_id` as a real, indexed filter — so
+    this fetches only *this sender's* prior issues, then scores each
+    one's title against `candidate_title` locally. Restricting to the
+    same sender first avoids matching one customer's bug report against
+    a different customer's similarly-worded one.
+
+    Filters on `external_id` alone, not `external_id` + `external_source`
+    together: confirmed empirically against the live API that combining
+    both switches the endpoint from list/filter semantics (200, possibly
+    empty) to single-resource lookup semantics (404 when nothing matches)
+    — undocumented, but reproducible. `external_source` is still set at
+    creation time as informational tagging, just not used as a filter.
+    """
+    prior_issues = await connector.search_records(entity_type, {"external_id": sender_email})
+    candidates = [
+        CandidateMatch(
+            record=issue,
+            match_reason="fuzzy_title",
+            score=_name_similarity(candidate_title, issue.get("name", "")),
+        )
+        for issue in prior_issues
+    ]
     return sorted(candidates, key=lambda c: c.score, reverse=True)
 
 

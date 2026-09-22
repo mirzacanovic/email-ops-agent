@@ -18,18 +18,21 @@ from app.connectors.base import SystemConnector
 from app.llm.base import LLMClient
 from app.pipeline.classify import classify
 from app.pipeline.extract import extract
-from app.pipeline.match import CandidateMatch, find_candidate_matches
+from app.pipeline.match import CandidateMatch, find_candidate_matches, find_similar_issues
 from app.pipeline.propose import propose_action
 
 logger = logging.getLogger(__name__)
 
 # The single place an intent is mapped to the system it acts on. An
-# intent with no entry here (e.g. "project_status_question" — Phase 1
-# has no Plane issue-matching yet, see match.py's TODO) falls through to
-# propose.py's escalation path instead of guessing.
+# intent with no entry here falls through to propose.py's escalation
+# path instead of guessing. "project_status_question" routes to Plane
+# too, not just "support_request" -- a "any update on this?" follow-up
+# is exactly what find_similar_issues (see pipeline/match.py) exists to
+# match back to the original issue instead of filing a duplicate.
 INTENT_ROUTES: dict[str, str] = {
     "sales_inquiry": "espocrm",
     "support_request": "plane",
+    "project_status_question": "plane",
 }
 
 
@@ -112,6 +115,12 @@ async def _process_one(
         extracted_fields = await extract(
             llm, email.subject, email.body, email.sender, classification.intent, schema
         )
+        candidate_matches = await find_similar_issues(
+            plane,
+            entity_type,
+            extracted_fields.get("name", email.subject),
+            sender_email=email.sender,
+        )
 
     db.add(
         ExtractionResult(
@@ -124,7 +133,12 @@ async def _process_one(
     )
 
     proposed = await propose_action(
-        classification.intent, target_system, entity_type, extracted_fields, candidate_matches
+        classification.intent,
+        target_system,
+        entity_type,
+        extracted_fields,
+        candidate_matches,
+        sender_email=email.sender,
     )
     db.add(
         ProposedAction(

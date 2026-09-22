@@ -70,9 +70,10 @@ email-ops-agent/
 
 Phase 1 — the full loop runs end to end: an email from the simulator is
 classified, extracted into a system-appropriate schema, matched against
-existing EspoCRM records, proposed as an action, and — once approved
-through the review UI — executed against EspoCRM/Plane, with every stage
-recorded in the audit DB. Known gaps, called out inline as
-`TODO(phase-2)`: no dedup against existing Plane issues (support
-requests always propose *create*), no real auth on the approval UI, and
-schema migrations are `create_all` rather than Alembic.
+existing EspoCRM records or prior Plane issues from the same sender,
+proposed as an action, and — once approved through the review UI —
+executed against EspoCRM/Plane, with every stage recorded in the audit
+DB. Verified against a live EspoCRM instance and a real Plane Cloud
+workspace. Known gaps, called out inline as `TODO(phase-2)`: no real
+auth on the approval UI, and schema migrations are `create_all` rather
+than Alembic.

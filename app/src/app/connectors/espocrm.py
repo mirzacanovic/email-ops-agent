@@ -80,10 +80,14 @@ class EspoCRMConnector(SystemConnector):
     """
 
     def __init__(self, base_url: str, api_key: str) -> None:
+        # 10s was too tight in practice: a request timed out here while
+        # running alongside Ollama inference under load, failing a
+        # message that would otherwise have succeeded (same class of
+        # problem OllamaClient's own timeout hit — see its comment).
         self._client = httpx.AsyncClient(
             base_url=f"{base_url.rstrip('/')}/api/v1",
             headers={"X-Api-Key": api_key},
-            timeout=10.0,
+            timeout=30.0,
         )
 
     async def search_records(

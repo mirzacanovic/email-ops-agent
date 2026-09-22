@@ -4,6 +4,14 @@ import httpx
 
 from app.connectors.base import SystemConnector
 
+# Tags issues this pipeline creates so a later email from the same sender
+# can be matched back to them via the `external_id`/`external_source`
+# query params Plane's list endpoint documents for "filtering or lookup"
+# -- Plane's work-items list has no full-text search, but this filter is
+# real and indexed, unlike EspoCRM's `_fulltext`, which this connector has
+# no equivalent for (see pipeline/match.py's find_similar_issues).
+EXTERNAL_SOURCE = "email-ops-agent"
+
 
 class PlaneConnector(SystemConnector):
     """Adapter for Plane's REST API (https://developers.plane.so/api-reference).
@@ -19,10 +27,14 @@ class PlaneConnector(SystemConnector):
 
     def __init__(self, base_url: str, api_key: str, workspace_slug: str) -> None:
         self._workspace_slug = workspace_slug
+        # 30s, not the more typical 10s: this is a real internet round
+        # trip to Plane Cloud, running alongside a CPU-bound local model
+        # under real resource pressure (see EspoCRMConnector's timeout
+        # comment for the local-network case that already got hit).
         self._client = httpx.AsyncClient(
             base_url=f"{base_url.rstrip('/')}/api/v1/workspaces/{workspace_slug}",
             headers={"x-api-key": api_key},
-            timeout=10.0,
+            timeout=30.0,
         )
 
     async def search_records(

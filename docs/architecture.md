@@ -34,11 +34,19 @@ Email simulator ──▶ ingestion ──▶ classify ──▶ extract ──�
   full internal field set, only the ones it's safe to fill from email
   content.
 
-- **Matching is two passes, both logged** (`app/src/app/pipeline/match.py`):
+- **Matching has a different scheme per system, both logged**
+  (`app/src/app/pipeline/match.py`). EspoCRM (`find_candidate_matches`):
   exact match on sender email first, then a fuzzy pass on account/company
-  name via the connector's `_fulltext` search convention, scored locally
-  with `difflib`. Every candidate considered is kept, not just the best
-  one, so a human reviewer can see what else was close.
+  name via the connector's `_fulltext` search convention. Plane
+  (`find_similar_issues`): Plane's work-items list has no full-text
+  search, so instead every issue this pipeline creates is tagged
+  `external_id=<sender email>` at creation time (`connectors/plane.py`'s
+  `EXTERNAL_SOURCE`), which Plane's list endpoint can filter on directly
+  — narrowing to *this sender's* prior issues before fuzzy-scoring
+  titles with `difflib`, so a bug report from one customer never matches
+  a similarly-worded one from another. Both score locally and return
+  every candidate considered, not just the best one, so a human reviewer
+  can see what else was close.
 
 - **Every pipeline stage is a separate, inspectable function**
   (`app/src/app/pipeline/*.py`) rather than one opaque agent loop. Each
@@ -54,11 +62,16 @@ Email simulator ──▶ ingestion ──▶ classify ──▶ extract ──�
 
 - **Some intents deliberately produce no action.** `propose_action`
   returns `action_type="escalate"` for any intent with no route in
-  `ingestion.inbox_poller.INTENT_ROUTES` (e.g.
-  `project_status_question`, which would need Plane issue-matching that
-  isn't built yet) rather than guessing. `execute_action` treats
-  `escalate` as a no-op — approving it just records that a human will
-  handle it outside this system.
+  `ingestion.inbox_poller.INTENT_ROUTES` rather than guessing.
+  `execute_action` treats `escalate` as a no-op — approving it just
+  records that a human will handle it outside this system.
+
+- **A Plane "update" appends rather than overwrites.** When
+  `find_similar_issues` matches a follow-up email to an existing issue,
+  `propose.py` concatenates the new email onto the existing
+  `description_html` instead of replacing it — a plain PATCH with just
+  the follow-up's content would silently destroy the original bug
+  report.
 
 - **The email simulator is a separate service, not a module**, so it can
   later be swapped for a real IMAP/webhook listener without touching the
