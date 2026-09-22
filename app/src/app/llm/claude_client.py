@@ -35,5 +35,12 @@ class ClaudeClient(LLMClient):
         )
         for block in response.content:
             if block.type == "tool_use":
+                if not isinstance(block.input, dict):
+                    # Shouldn't happen -- every json_schema we pass has
+                    # type "object" -- but block.input is typed as `object`
+                    # by the SDK (tool inputs are arbitrary JSON), so this
+                    # is the boundary where that gets confirmed rather than
+                    # silently cast.
+                    raise TypeError(f"Expected a dict tool_use input, got {type(block.input)}")
                 return block.input
         raise RuntimeError("Claude did not return a tool_use block")

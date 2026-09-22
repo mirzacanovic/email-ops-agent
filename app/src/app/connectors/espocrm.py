@@ -73,6 +73,34 @@ FIELD_DESCRIPTIONS: dict[str, str] = {
 }
 
 
+def build_schema_from_field_defs(entity_type: str, field_defs: dict[str, Any]) -> dict[str, Any]:
+    """Translate EspoCRM's raw metadata field defs into JSON Schema,
+    narrowed to EXTRACTABLE_FIELDS. Split out from get_schema as a pure
+    function so the translation logic (allowlisting, type mapping, field
+    descriptions) is unit-testable without mocking HTTP.
+    """
+    allowed_fields = EXTRACTABLE_FIELDS.get(entity_type, list(field_defs.keys()))
+
+    properties: dict[str, Any] = {}
+    for field_name in allowed_fields:
+        field_def = field_defs.get(field_name)
+        if field_def is None:
+            continue
+        if field_def.get("type") == "enum" and field_def.get("options"):
+            prop = {"type": "string", "enum": field_def["options"]}
+        else:
+            # Copy rather than reuse the shared ESPOCRM_TYPE_MAP dict —
+            # every "varchar" field would otherwise point at the same
+            # object, so adding a per-field "description" below would
+            # leak across all fields of that type.
+            prop = dict(ESPOCRM_TYPE_MAP.get(field_def.get("type", ""), {"type": "string"}))
+        if field_name in FIELD_DESCRIPTIONS:
+            prop["description"] = FIELD_DESCRIPTIONS[field_name]
+        properties[field_name] = prop
+
+    return {"type": "object", "properties": properties, "additionalProperties": False}
+
+
 class EspoCRMConnector(SystemConnector):
     """Adapter for EspoCRM's REST API (https://docs.espocrm.com/development/api/).
 
@@ -103,7 +131,11 @@ class EspoCRMConnector(SystemConnector):
         `pipeline.match`, since scanning every record client-side wouldn't
         scale past demo-sized data.
         """
-        params: list[tuple[str, str]] = [("maxSize", "50")]
+        # httpx's `params` accepts list[tuple[str, str | int | float | bool
+        # | None]] specifically -- list[tuple[str, str]], though every
+        # value here is in fact a str, isn't accepted due to list
+        # invariance, so the annotation has to match httpx's shape exactly.
+        params: list[tuple[str, str | int | float | bool | None]] = [("maxSize", "50")]
         where_index = 0
         for attribute, value in query.items():
             if attribute == "_fulltext":
@@ -144,23 +176,4 @@ class EspoCRMConnector(SystemConnector):
         field_defs: dict[str, Any] = (
             response.json().get("entityDefs", {}).get(entity_type, {}).get("fields", {})
         )
-        allowed_fields = EXTRACTABLE_FIELDS.get(entity_type, list(field_defs.keys()))
-
-        properties: dict[str, Any] = {}
-        for field_name in allowed_fields:
-            field_def = field_defs.get(field_name)
-            if field_def is None:
-                continue
-            if field_def.get("type") == "enum" and field_def.get("options"):
-                prop = {"type": "string", "enum": field_def["options"]}
-            else:
-                # Copy rather than reuse the shared ESPOCRM_TYPE_MAP dict —
-                # every "varchar" field would otherwise point at the same
-                # object, so adding a per-field "description" below would
-                # leak across all fields of that type.
-                prop = dict(ESPOCRM_TYPE_MAP.get(field_def.get("type", ""), {"type": "string"}))
-            if field_name in FIELD_DESCRIPTIONS:
-                prop["description"] = FIELD_DESCRIPTIONS[field_name]
-            properties[field_name] = prop
-
-        return {"type": "object", "properties": properties, "additionalProperties": False}
+        return build_schema_from_field_defs(entity_type, field_defs)

@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check app email-simulator
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements-dev.txt
+            app/requirements.txt
+            email-simulator/requirements.txt
+      - run: >
+          pip install -r requirements-dev.txt -r app/requirements.txt
+          -r email-simulator/requirements.txt
+      # MYPYPATH=src + --explicit-package-bases lets mypy resolve
+      # `app.*` / `email_simulator.*` imports the same way pytest's
+      # `pythonpath = src` ini option does -- both src/ and tests/ are
+      # checked together so the test files themselves are type-checked too.
+      - name: mypy (app)
+        working-directory: app
+        run: MYPYPATH=src mypy src/app tests --explicit-package-bases
+      - name: mypy (email-simulator)
+        working-directory: email-simulator
+        run: MYPYPATH=src mypy src/email_simulator tests --explicit-package-bases
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements-dev.txt
+            app/requirements.txt
+            email-simulator/requirements.txt
+      - run: >
+          pip install -r requirements-dev.txt -r app/requirements.txt
+          -r email-simulator/requirements.txt
+      - name: pytest (app)
+        working-directory: app
+        run: pytest
+      - name: pytest (email-simulator)
+        working-directory: email-simulator
+        run: pytest
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [app, email-simulator]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build ./${{ matrix.service }}
+
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose config --quiet

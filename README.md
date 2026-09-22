@@ -1,5 +1,7 @@
 # Email Ops Agent
 
+[![CI](https://github.com/mirzacanovic/email-ops-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/mirzacanovic/email-ops-agent/actions/workflows/ci.yml)
+
 Portfolio project: an AI agent that reads an inbound email, extracts structured
 information, searches existing records across a company's SaaS stack, proposes
 an action, waits for human approval, executes it via API, and records an
@@ -27,9 +29,13 @@ for the LLM backend choice.
 
 ```
 email-ops-agent/
+├── .github/workflows/ci.yml  # lint, type-check, unit tests, image builds, compose validation
 ├── docker-compose.yml        # app-db, adminer, email-simulator, app, EspoCRM(+db+daemon)
 ├── .env.example
+├── requirements-dev.txt      # CI tooling (ruff, mypy, pytest) -- not in either runtime image
 ├── app/                      # orchestrator: FastAPI service
+│   ├── pytest.ini
+│   ├── tests/                # propose.py decision rules, match.py scoring, schema translation
 │   └── src/app/
 │       ├── connectors/       # one interface, one adapter per SaaS system
 │       ├── llm/              # one interface, one adapter per model backend (Ollama/Claude)
@@ -38,6 +44,8 @@ email-ops-agent/
 │       ├── audit/            # audit-log models
 │       └── db/               # SQLAlchemy session (create_all for now; Alembic later)
 ├── email-simulator/          # serves fixture emails over HTTP
+│   ├── pytest.ini
+│   ├── tests/
 │   └── src/email_simulator/fixtures/
 ├── scripts/                  # seed data, demo reset
 └── docs/
@@ -65,6 +73,25 @@ email-ops-agent/
 9. Review proposals: http://localhost:8000/approvals — approve calls the
    target system's API for real (EspoCRM if `ESPOCRM_API_KEY` is set;
    Plane if `PLANE_*` is configured), reject just records the decision.
+
+## Development
+
+CI (`.github/workflows/ci.yml`) runs lint, type-check, unit tests, and a
+build of both images on every push/PR. To run the same checks locally:
+
+```bash
+pip install -r requirements-dev.txt -r app/requirements.txt -r email-simulator/requirements.txt
+
+ruff check app email-simulator
+
+cd app && MYPYPATH=src mypy src/app tests --explicit-package-bases && pytest && cd ..
+cd email-simulator && MYPYPATH=src mypy src/email_simulator tests --explicit-package-bases && pytest && cd ..
+```
+
+Unit tests cover the pure-logic pieces — `propose.py`'s decision rules,
+`match.py`'s fuzzy scoring, EspoCRM's schema-translation — not the
+connectors' actual HTTP calls (those need a real EspoCRM/Plane, which is
+what `docker compose up` + a manual `/ingest/poll` run is for).
 
 ## Status
 

@@ -1,0 +1,6 @@
+# Tooling for CI (lint, type-check, test) — not part of either service's
+# runtime image, kept separate so the deployed images stay lean.
+ruff==0.8.4
+mypy==1.13.0
+pytest==8.3.4
+pytest-asyncio==0.24.0
