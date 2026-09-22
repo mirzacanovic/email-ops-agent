@@ -127,9 +127,12 @@ services:
 
   # Runs EspoCRM's scheduled jobs (workflows, notifications). Not required
   # for the Phase 1 demo loop, but cheap to include so the CRM behaves
-  # normally if you poke around in it manually.
+  # normally if you poke around in it manually. There's no separate
+  # "espocrm-daemon" image — EspoCRM's own docs run the same espocrm
+  # image with a different entrypoint script for the cron/daemon process.
   espocrm-daemon:
-    image: espocrm/espocrm-daemon:latest
+    image: espocrm/espocrm:latest
+    entrypoint: docker-daemon.sh
     restart: unless-stopped
     environment:
       ESPOCRM_DATABASE_HOST: espocrm-db

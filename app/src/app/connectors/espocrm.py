@@ -46,6 +46,32 @@ ESPOCRM_TYPE_MAP: dict[str, dict[str, Any]] = {
     "datetime": {"type": "string", "format": "date-time"},
 }
 
+# Grounds the extraction model on what each field actually means, so it
+# stops confusing e.g. "the sender's company" with "what the sender is
+# asking for" (msg-001 in testing extracted a company name into a field
+# meant for a problem description).
+FIELD_DESCRIPTIONS: dict[str, str] = {
+    "firstName": "The sender's first name.",
+    "lastName": "The sender's last name.",
+    "emailAddress": (
+        "The sender's email address, copied exactly from the sender "
+        "address given in the prompt — never reformatted or guessed."
+    ),
+    "phoneNumber": "A phone number explicitly written in the email, if any.",
+    "accountName": (
+        "The name of the sender's company/organization, if mentioned — "
+        "not the sender's own name."
+    ),
+    "description": (
+        "A concise summary, in the sender's own words, of what they are "
+        "asking for or reporting — not the company name or sender name."
+    ),
+    "source": (
+        "How this lead reached us (e.g. 'Website', 'Referral'), only if "
+        "explicitly stated in the email — omit if not stated."
+    ),
+}
+
 
 class EspoCRMConnector(SystemConnector):
     """Adapter for EspoCRM's REST API (https://docs.espocrm.com/development/api/).
@@ -122,10 +148,15 @@ class EspoCRMConnector(SystemConnector):
             if field_def is None:
                 continue
             if field_def.get("type") == "enum" and field_def.get("options"):
-                properties[field_name] = {"type": "string", "enum": field_def["options"]}
+                prop = {"type": "string", "enum": field_def["options"]}
             else:
-                properties[field_name] = ESPOCRM_TYPE_MAP.get(
-                    field_def.get("type", ""), {"type": "string"}
-                )
+                # Copy rather than reuse the shared ESPOCRM_TYPE_MAP dict —
+                # every "varchar" field would otherwise point at the same
+                # object, so adding a per-field "description" below would
+                # leak across all fields of that type.
+                prop = dict(ESPOCRM_TYPE_MAP.get(field_def.get("type", ""), {"type": "string"}))
+            if field_name in FIELD_DESCRIPTIONS:
+                prop["description"] = FIELD_DESCRIPTIONS[field_name]
+            properties[field_name] = prop
 
         return {"type": "object", "properties": properties, "additionalProperties": False}

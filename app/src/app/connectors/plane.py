@@ -63,8 +63,22 @@ class PlaneConnector(SystemConnector):
         return {
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Concise issue title"},
-                "description_html": {"type": "string", "description": "Issue body"},
+                "name": {
+                    "type": "string",
+                    "description": (
+                        "A concise title summarizing the problem, e.g. "
+                        "'CSV export fails on reports page' — not the "
+                        "sender's name or company."
+                    ),
+                },
+                "description_html": {
+                    "type": "string",
+                    "description": (
+                        "A description of the issue itself — what's wrong, "
+                        "steps to reproduce, impact — in the sender's own "
+                        "words. Not the sender's name or company."
+                    ),
+                },
                 "priority": {
                     "type": "string",
                     "enum": ["urgent", "high", "medium", "low", "none"],

@@ -101,7 +101,7 @@ async def _process_one(
         entity_type = "Lead"
         schema = await espocrm.get_schema(entity_type)
         extracted_fields = await extract(
-            llm, email.subject, email.body, classification.intent, schema
+            llm, email.subject, email.body, email.sender, classification.intent, schema
         )
         candidate_matches = await find_candidate_matches(
             espocrm, entity_type, extracted_fields, sender_email=email.sender
@@ -110,7 +110,7 @@ async def _process_one(
         entity_type = f"issues:{plane_project_id}"
         schema = await plane.get_schema(entity_type)
         extracted_fields = await extract(
-            llm, email.subject, email.body, classification.intent, schema
+            llm, email.subject, email.body, email.sender, classification.intent, schema
         )
 
     db.add(

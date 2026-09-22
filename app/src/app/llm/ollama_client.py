@@ -18,7 +18,15 @@ class OllamaClient(LLMClient):
 
     def __init__(self, base_url: str, model: str) -> None:
         self._model = model
-        self._client = httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=60.0)
+        # CPU-only cold loads of a 7B model can take minutes, and Ollama
+        # aborts an in-progress load the moment the client disconnects
+        # (confirmed from its own logs: "client connection closed before
+        # llama-server finished loading, aborting load"). A timeout that
+        # fires before the load finishes doesn't just fail that request —
+        # it forces every subsequent request to restart the cold load
+        # from scratch too, so this needs real headroom rather than a
+        # typical HTTP client timeout.
+        self._client = httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=300.0)
 
     async def complete_json(
         self, system_prompt: str, user_prompt: str, json_schema: dict[str, Any]
@@ -33,6 +41,16 @@ class OllamaClient(LLMClient):
                 ],
                 "format": json_schema,
                 "stream": False,
+                # temperature=0 for reproducibility: classify/extract feed
+                # an audit trail and an approval decision, and the same
+                # email classifying differently across runs (confirmed in
+                # testing — one run called a message "support_request",
+                # another called it "project_status_question") undermines
+                # the whole point of having an auditable, explainable
+                # pipeline. Deterministic sampling doesn't fix accuracy,
+                # but at least the same input reliably gives the same
+                # answer.
+                "options": {"temperature": 0},
             },
         )
         response.raise_for_status()
