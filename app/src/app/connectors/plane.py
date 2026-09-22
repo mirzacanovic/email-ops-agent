@@ -9,10 +9,12 @@ class PlaneConnector(SystemConnector):
     """Adapter for Plane's REST API (https://developers.plane.so/api-reference).
 
     Auth: header `x-api-key: <key>`. Most endpoints are scoped under
-    `/api/v1/workspaces/{workspace_slug}/...`, and issue operations are
-    further scoped to a project, so `entity_type` here is treated as
-    `"issues:<project_id>"` — see TODO below for a cleaner scheme once
-    the extraction stage knows how to pick a project.
+    `/api/v1/workspaces/{workspace_slug}/...`, and work-item operations
+    are further scoped to a project, so `entity_type` here is treated as
+    `"issues:<project_id>"` (our own internal naming — Plane's API itself
+    calls these "work items", path segment `work-items/`, not "issues")
+    — see TODO below for a cleaner scheme once the extraction stage
+    knows how to pick a project.
     """
 
     def __init__(self, base_url: str, api_key: str, workspace_slug: str) -> None:
@@ -27,7 +29,7 @@ class PlaneConnector(SystemConnector):
         self, entity_type: str, query: dict[str, Any]
     ) -> list[dict[str, Any]]:
         project_id = self._project_id(entity_type)
-        response = await self._client.get(f"/projects/{project_id}/issues/", params=query)
+        response = await self._client.get(f"/projects/{project_id}/work-items/", params=query)
         response.raise_for_status()
         return response.json().get("results", [])
 
@@ -35,7 +37,7 @@ class PlaneConnector(SystemConnector):
         self, entity_type: str, fields: dict[str, Any]
     ) -> dict[str, Any]:
         project_id = self._project_id(entity_type)
-        response = await self._client.post(f"/projects/{project_id}/issues/", json=fields)
+        response = await self._client.post(f"/projects/{project_id}/work-items/", json=fields)
         response.raise_for_status()
         return response.json()
 
@@ -44,7 +46,7 @@ class PlaneConnector(SystemConnector):
     ) -> dict[str, Any]:
         project_id = self._project_id(entity_type)
         response = await self._client.patch(
-            f"/projects/{project_id}/issues/{record_id}/", json=fields
+            f"/projects/{project_id}/work-items/{record_id}/", json=fields
         )
         response.raise_for_status()
         return response.json()
