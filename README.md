@@ -22,8 +22,9 @@ Demo stack (Phase 1):
 
 See [docs/architecture.md](docs/architecture.md) for how the pieces fit
 together, [docs/plane-setup.md](docs/plane-setup.md) for why Plane isn't
-in `docker-compose.yml`, and [docs/llm-backend.md](docs/llm-backend.md)
-for the LLM backend choice.
+in `docker-compose.yml`, [docs/llm-backend.md](docs/llm-backend.md) for
+the LLM backend choice, and [docs/roadmap.md](docs/roadmap.md) for what's
+done, what's next, and what's deliberately out of scope for now.
 
 ## Repo layout
 
@@ -95,12 +96,7 @@ what `docker compose up` + a manual `/ingest/poll` run is for).
 
 ## Status
 
-Phase 1 — the full loop runs end to end: an email from the simulator is
-classified, extracted into a system-appropriate schema, matched against
-existing EspoCRM records or prior Plane issues from the same sender,
-proposed as an action, and — once approved through the review UI —
-executed against EspoCRM/Plane, with every stage recorded in the audit
-DB. Verified against a live EspoCRM instance and a real Plane Cloud
-workspace. Known gaps, called out inline as `TODO(phase-2)`: no real
-auth on the approval UI, and schema migrations are `create_all` rather
-than Alembic.
+Phase 1 — the full loop runs end to end against live systems (a real
+EspoCRM instance and a real Plane Cloud workspace), not mocks. See
+[docs/roadmap.md](docs/roadmap.md) for the current gap list and what's
+next.
