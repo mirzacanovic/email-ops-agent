@@ -1,10 +1,13 @@
 from typing import Any
 
+import pytest
+
 from app.connectors.base import SystemConnector
 from app.pipeline.match import (
     _name_similarity,
     find_candidate_matches,
     find_similar_issues,
+    normalize_subject,
 )
 
 
@@ -97,3 +100,42 @@ async def test_find_similar_issues_scores_and_ranks_by_title_similarity():
     # too, which triggers a 404-on-no-match lookup mode on Plane's real
     # API instead of a normal filtered list (see match.py's docstring).
     assert connector.calls == [("issues:proj-1", {"external_id": "jordan@x.com"})]
+
+
+# --- follow-up matching on the email's own subject (found in the rehearsal) ---
+
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [
+        ("Re: Export button throws an error", "Export button throws an error"),
+        ("RE: re: Fwd: Export button", "Export button"),
+        ("AW: Exportproblem", "Exportproblem"),
+        ("WG: AW: Exportproblem", "Exportproblem"),
+        ("Export button", "Export button"),
+        ("Regarding exports", "Regarding exports"),  # "Re" inside a word is not a prefix
+    ],
+)
+def test_normalize_subject(subject, expected):
+    assert normalize_subject(subject) == expected
+
+
+async def test_followup_matches_original_via_subject_even_when_model_title_differs():
+    # Real values from the rehearsal: the model titled the follow-up
+    # "CSV export issue", which scores only ~0.28 against the original issue
+    # (threshold 0.55) -- the follow-up's own subject must rescue the match.
+    original = {"id": "i1", "name": "Export button throws an error on the reports page"}
+    connector = FakeConnector([[original]])
+
+    without_subject = await find_similar_issues(
+        FakeConnector([[original]]), "issues:p", "CSV export issue", sender_email="j@x.com"
+    )
+    assert without_subject[0].score < 0.55
+
+    with_subject = await find_similar_issues(
+        connector,
+        "issues:p",
+        "CSV export issue",
+        sender_email="j@x.com",
+        alt_titles=[normalize_subject("Re: Export button throws an error on the reports page")],
+    )
+    assert with_subject[0].score == pytest.approx(1.0)

@@ -6,7 +6,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.audit.models import ApprovalDecision, ExecutionResult, ProposedAction
+from app.audit.models import ApprovalDecision, ExecutionResult, ProposedAction, User
+from app.auth.deps import require_user
 from app.connectors.espocrm import EspoCRMConnector
 from app.connectors.plane import PlaneConnector
 from app.db.session import get_db
@@ -14,22 +15,27 @@ from app.dependencies import get_espocrm_connector, get_plane_connector
 from app.pipeline.execute import execute_action
 from app.pipeline.propose import ProposedActionDraft
 
-router = APIRouter(prefix="/approvals", tags=["approvals"])
+router = APIRouter(prefix="/approvals", tags=["approvals"], dependencies=[Depends(require_user)])
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
-# demo has no real auth/identity yet -- see TODO(phase-2) below.
-DEMO_APPROVER = "demo-user"
-
-
 @router.get("", response_class=HTMLResponse)
-def list_pending_approvals(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+def list_pending_approvals(
+    request: Request,
+    db: Session = Depends(get_db),
+    poll: str | None = None,
+    processed: int | None = None,
+) -> HTMLResponse:
     already_decided = select(ApprovalDecision.proposed_action_id)
     pending = db.scalars(
         select(ProposedAction)
         .where(ProposedAction.id.not_in(already_decided))
         .order_by(ProposedAction.created_at.desc())
     ).all()
-    return templates.TemplateResponse(request, "review.html", {"pending": pending})
+    return templates.TemplateResponse(
+        request,
+        "review.html",
+        {"pending": pending, "poll": poll, "processed": processed},
+    )
 
 
 @router.post("/{proposed_action_id}/approve")
@@ -38,15 +44,14 @@ async def approve(
     db: Session = Depends(get_db),
     espocrm: EspoCRMConnector = Depends(get_espocrm_connector),
     plane: PlaneConnector = Depends(get_plane_connector),
+    user: User = Depends(require_user),
 ) -> RedirectResponse:
     proposed = db.get(ProposedAction, proposed_action_id)
     if proposed is None:
         raise HTTPException(status_code=404, detail="Proposed action not found")
 
-    # TODO(phase-2): real auth — approver is hardcoded until there's a
-    # login system for the review UI.
     decision = ApprovalDecision(
-        proposed_action_id=proposed.id, decision="approved", approver=DEMO_APPROVER
+        proposed_action_id=proposed.id, decision="approved", approver=user.username
     )
     db.add(decision)
     db.flush()  # populate decision.id for the ExecutionResult FK below
@@ -82,14 +87,18 @@ async def approve(
 
 
 @router.post("/{proposed_action_id}/reject")
-def reject(proposed_action_id: str, db: Session = Depends(get_db)) -> RedirectResponse:
+def reject(
+    proposed_action_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> RedirectResponse:
     proposed = db.get(ProposedAction, proposed_action_id)
     if proposed is None:
         raise HTTPException(status_code=404, detail="Proposed action not found")
 
     db.add(
         ApprovalDecision(
-            proposed_action_id=proposed.id, decision="rejected", approver=DEMO_APPROVER
+            proposed_action_id=proposed.id, decision="rejected", approver=user.username
         )
     )
     db.commit()

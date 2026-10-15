@@ -5,6 +5,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+scripts/release_demo_emails.sh reset
+
 docker compose down -v
 docker compose up --build -d
 
