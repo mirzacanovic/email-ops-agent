@@ -76,10 +76,19 @@ email-ops-agent/
    prompted for the password:
    `docker compose exec app python -m app.cli create-user alice`
    (`set-password <username>` changes one later.)
-9. Run the pipeline: click **Check inbox now** on the approvals page, or
-   `curl -u alice -X POST http://localhost:8000/ingest/poll` — pulls
-   whatever's new from the email simulator through
-   classify → extract → match → propose.
+9. Run the pipeline: click **Check inbox now** on the approvals page. It
+   starts a background job and returns at once; the page shows
+   "N of M emails done" and refreshes itself (each email takes a few
+   minutes on a CPU-only model). The same job is available as
+   `curl -u alice -X POST http://localhost:8000/ingest/start` with progress at
+   `GET /ingest/status`; the older `POST /ingest/poll` still works but blocks
+   until the whole batch is done.
+
+   Wait for `GET http://localhost:8000/ready` to return 200 before the first
+   poll: it reports whether the database is up and the model is actually
+   loaded. `docker compose up` loads the model for you (the `ollama-warm`
+   service) and keeps it resident (`OLLAMA_KEEP_ALIVE`, 24 h by default), but
+   the first load takes about 20 minutes on CPU.
 10. Review proposals: http://localhost:8000/approvals — approve calls the
     target system's API for real (EspoCRM if `ESPOCRM_API_KEY` is set;
     Plane if `PLANE_*` is configured), reject just records the decision.

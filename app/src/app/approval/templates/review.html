@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  {% if job.state == "running" %}<meta http-equiv="refresh" content="10">{% endif %}
   <title>Pending approvals — Email Ops Agent</title>
   <style>
     body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
@@ -20,16 +21,22 @@
 <body>
   <nav><a href="/approvals"><strong>Approvals</strong></a> <a href="/metrics">Metrics</a></nav>
   <h1>Pending approvals</h1>
-  {% if poll == "ok" %}
-    <div class="banner ok">Checked the inbox: {{ processed }} new message{{ "" if processed == 1 else "s" }} processed.</div>
-  {% elif poll == "busy" %}
-    <div class="banner warn">A poll is already in progress — refresh in a moment.</div>
-  {% elif poll == "error" %}
-    <div class="banner error">Polling failed (is the email simulator reachable?). Check the server logs.</div>
+  {% if job.state == "running" %}
+    <div class="banner warn">
+      Checking the inbox&hellip;
+      {% if job.total is none %}reading new emails{% else %}{{ job.handled }} of {{ job.total }} emails done{% endif %}.
+      This page refreshes every 10 seconds; each email takes a few minutes on a CPU-only model.
+    </div>
+  {% elif job.state == "done" %}
+    <div class="banner ok">
+      Last check finished: {{ job.processed }} new message{{ "" if job.processed == 1 else "s" }} processed{% if job.failed %}, {{ job.failed }} failed (they will be retried on the next check){% endif %}.
+    </div>
+  {% elif job.state == "error" %}
+    <div class="banner error">Checking the inbox failed: {{ job.error }}</div>
   {% endif %}
 
-  <form method="post" action="/ingest/poll-form" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Checking inbox…'">
-    <button type="submit">Check inbox now</button>
+  <form method="post" action="/ingest/poll-form">
+    <button type="submit" {% if job.state == "running" %}disabled{% endif %}>Check inbox now</button>
   </form>
 
   {% if not pending %}

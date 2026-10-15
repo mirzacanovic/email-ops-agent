@@ -16,7 +16,7 @@ class OllamaClient(LLMClient):
     not free text to re-parse.
     """
 
-    def __init__(self, base_url: str, model: str) -> None:
+    def __init__(self, base_url: str, model: str, timeout: float = 300.0) -> None:
         self._model = model
         # CPU-only cold loads of a 7B model can take minutes, and Ollama
         # aborts an in-progress load the moment the client disconnects
@@ -26,7 +26,7 @@ class OllamaClient(LLMClient):
         # it forces every subsequent request to restart the cold load
         # from scratch too, so this needs real headroom rather than a
         # typical HTTP client timeout.
-        self._client = httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=300.0)
+        self._client = httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=timeout)
 
     async def complete_json(
         self, system_prompt: str, user_prompt: str, json_schema: dict[str, Any]

@@ -10,12 +10,22 @@ from app.audit.models import Base, User
 from app.auth.deps import require_user
 from app.db.session import get_db
 from app.dependencies import get_espocrm_connector, get_llm, get_plane_connector
+from app.ingestion import jobs
 from app.ingestion import routes as ingestion_routes
 
 
+@pytest.fixture(autouse=True)
+def fresh_job_state():
+    jobs.job.__dict__.update(jobs.PollJob().__dict__)
+    yield
+    jobs.job.__dict__.update(jobs.PollJob().__dict__)
+
+
 @pytest.fixture
-def client(monkeypatch):
-    engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
+def client():
+    engine = create_engine(
+        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
+    )
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
 
@@ -47,24 +57,17 @@ def _stub_poll(monkeypatch, result):
 def test_button_is_rendered_on_approvals_page(client):
     html = client.get("/approvals").text
     assert 'action="/ingest/poll-form"' in html
+    assert "disabled" not in html.split("<button", 1)[1].split(">", 1)[0]  # idle: clickable
 
 
-def test_poll_form_redirects_with_processed_count(client, monkeypatch):
+def test_synchronous_poll_still_returns_the_processed_count(client, monkeypatch):
     _stub_poll(monkeypatch, 3)
-    r = client.post("/ingest/poll-form", follow_redirects=False)
-    assert r.status_code == 303
-    assert r.headers["location"] == "/approvals?poll=ok&processed=3"
-    assert "3 new messages processed" in client.get(r.headers["location"]).text
+    r = client.post("/ingest/poll")
+    assert (r.status_code, r.json()) == (200, {"processed": 3})
 
 
-def test_poll_form_redirects_with_error_when_poll_raises(client, monkeypatch):
-    _stub_poll(monkeypatch, RuntimeError("simulator down"))
-    r = client.post("/ingest/poll-form", follow_redirects=False)
-    assert r.headers["location"] == "/approvals?poll=error"
-
-
-async def test_poll_form_reports_busy_when_a_poll_is_running(client, monkeypatch):
+async def test_synchronous_poll_reports_busy_when_a_poll_is_running(client, monkeypatch):
     _stub_poll(monkeypatch, 1)
     async with ingestion_routes._poll_lock:
-        r = client.post("/ingest/poll-form", follow_redirects=False)
-    assert r.headers["location"] == "/approvals?poll=busy"
+        r = client.post("/ingest/poll")
+    assert r.status_code == 409

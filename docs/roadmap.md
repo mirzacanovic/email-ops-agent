@@ -79,6 +79,27 @@ fixtures and on five unseen emails (5 of 5 as expected). Both are single runs:
   `find_similar_issues` now also scores the normalized email subject
   (`Re:`/`Fwd:`/`AW:` stripped), which matches at about 1.0.
 
+**Fixed (robustness pass):**
+
+- *Cold start*: the first load of the 7B model took ~19 minutes, and the
+  app's 5-minute timeout aborted it every time, so a cold stack never recovered.
+  `docker-compose.yml` now sets `OLLAMA_KEEP_ALIVE` (24 h by default) and has a
+  one-shot `ollama-warm` service that loads the model during `docker compose
+  up`. `GET /ready` reports 503 until the database is up and the model is
+  actually loaded, so there is something to wait on.
+- *EspoCRM's 30 s timeout* was too tight while Ollama saturated the CPU. The
+  connector timeouts (EspoCRM 60 s, Plane 30 s, Ollama 300 s) are now settings
+  (`ESPOCRM_TIMEOUT_SECONDS` etc.).
+- *`/ingest/poll` blocked for the whole batch* (~4 min per email). "Check
+  inbox now" now starts a background job (`POST /ingest/start`) and the page
+  shows "N of M emails done", refreshing itself; `GET /ingest/status` has the
+  same numbers. The synchronous `/ingest/poll` is kept. Job state is
+  in-memory and single-process, like the poll lock.
+
+Not yet confirmed on a cold start: the warm-up service itself (a cold load takes
+~20 minutes, and recreating the Ollama container would trigger one), so that
+part is verified by config validation and reading, not by a run.
+
 **Still open:**
 
 - **Confidence is still a weak signal** (see above); the floor needs a better
@@ -86,15 +107,6 @@ fixtures and on five unseen emails (5 of 5 as expected). Both are single runs:
 - **Prompt fit to the fixtures**: the classify examples were written after
   seeing the failures, so the six fixtures overstate accuracy. Grow the
   held-out set before trusting any accuracy number.
-- **Cold start**: first load of the 7B model took ~19 minutes, and the app's
-  300 s Ollama timeout aborts the load, so a cold stack never recovers on
-  its own. Consider `OLLAMA_KEEP_ALIVE` set high in `docker-compose.yml`, a
-  warm-up step in `ollama-pull`, and a readiness check.
-- **EspoCRM's 30 s timeout is too tight** while Ollama saturates the CPU
-  (one search timed out mid-rehearsal; the per-message retry recovered it).
-- **`/ingest/poll` blocks for the whole batch** (~4 min per email), so a
-  client or browser timeout is likely. Fine for the demo with a long timeout;
-  would want a background job with a status endpoint for anything else.
 
 ## Phase 3: expansion
 

@@ -5,11 +5,13 @@ from app.db.migrate import run_migrations
 from app.db.session import engine
 from app.ingestion.routes import router as ingestion_router
 from app.metrics.routes import router as metrics_router
+from app.readiness import router as readiness_router
 
 app = FastAPI(title="Email Ops Agent")
 app.include_router(approval_router)
 app.include_router(ingestion_router)
 app.include_router(metrics_router)
+app.include_router(readiness_router)
 
 
 @app.on_event("startup")

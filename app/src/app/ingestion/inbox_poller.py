@@ -5,6 +5,7 @@ rather than a background loop, so a demo can trigger it on cue.
 """
 
 import logging
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any
@@ -65,6 +66,7 @@ async def poll_and_process(
     plane: SystemConnector,
     plane_project_id: str,
     email_simulator_url: str,
+    progress: Callable[[int, int], None] | None = None,
 ) -> int:
     """Returns the number of messages successfully processed.
 
@@ -80,9 +82,11 @@ async def poll_and_process(
     messages = await _fetch_messages(email_simulator_url)
     already_processed = set(db.scalars(select(EmailMessage.source_message_id)))
     messages = [m for m in messages if m["id"] not in already_processed]
+    if progress:
+        progress(0, len(messages))
 
     processed = 0
-    for message in messages:
+    for handled, message in enumerate(messages, start=1):
         try:
             await _process_one(db, llm, espocrm, plane, plane_project_id, message)
             db.commit()
@@ -90,6 +94,8 @@ async def poll_and_process(
         except Exception:
             db.rollback()
             logger.exception("Failed to process message %s", message.get("id"))
+        if progress:
+            progress(handled, len(messages))
 
     return processed
 

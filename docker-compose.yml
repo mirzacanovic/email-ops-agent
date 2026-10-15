@@ -63,6 +63,10 @@ services:
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
+    environment:
+      # Ollama's default is to unload an idle model after 5 minutes, and a
+      # cold load of a 7B model took ~20 minutes on CPU. Keep it resident.
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-24h}
     ports:
       - "${OLLAMA_PORT:-11434}:11434"
     volumes:
@@ -95,6 +99,23 @@ services:
       - >-
         until curl -sf http://ollama:11434/api/tags >/dev/null; do sleep 2; done;
         curl -s http://ollama:11434/api/pull -d '{"model":"${OLLAMA_MODEL:-mistral:7b-instruct}"}'
+
+  # One-shot: loads the model into memory once it has been pulled, so the
+  # slow cold load happens during `docker compose up` instead of on the
+  # first email. The request has to stay open until the load finishes (the
+  # app's own timeout would abort it), hence the long --max-time. Watch for
+  # it finishing with GET /ready on the app, which reports llm.ready.
+  ollama-warm:
+    image: curlimages/curl:latest
+    restart: "no"
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        curl -s --max-time 7200 http://ollama:11434/api/generate
+        -d '{"model":"${OLLAMA_MODEL:-mistral:7b-instruct}","prompt":"hi","stream":false,"keep_alive":"${OLLAMA_KEEP_ALIVE:-24h}"}'
 
   espocrm-db:
     image: mariadb:11

@@ -12,21 +12,24 @@ what it has already seen, and the cases where it deliberately *doesn't* act.
 
 ## Before you start
 
-**Warm the model first.** On the rehearsal machine the first load of the 7B
-model took ~19 minutes, and the app's own requests time out (and abort the
-load) long before that, so nothing works until it is loaded. Run one
-request with no timeout and leave it resident:
-
-```bash
-curl -m 3000 localhost:11434/api/generate -d '{"model":"mistral:7b-instruct","prompt":"hi","stream":false,"keep_alive":"2h"}'
-```
+**Wait for the model to be loaded.** On the rehearsal machine the first load
+of the 7B model took ~19 minutes. `docker compose up` now starts it loading
+(the `ollama-warm` service) and keeps it resident for 24 hours, but you still
+have to wait: `curl localhost:8000/ready` returns 503 until the model is
+loaded and 200 when it is. Do this well before the audience arrives. (If the
+warm-up service is not running, one long request does the same:
+`curl -m 3000 localhost:11434/api/generate -d '{"model":"mistral:7b-instruct","prompt":"hi","stream":false,"keep_alive":"4h"}'`.)
 
 Then expect **~3-4 minutes per email** (about 1 minute to classify, 1-3 to
-extract). Click **Check inbox now** and talk over the wait, or narrate the
-audit trail in Adminer. Don't run it in a hurry.
+extract). **Check inbox now** returns immediately and the page shows
+"N of M emails done", refreshing itself every 10 seconds, so you can talk over
+the wait or narrate the audit trail in Adminer. Don't run it in a hurry.
 
-1. `scripts/reset_demo.sh` — clean slate (empty CRM, empty audit log, only
-   the act 1 emails live).
+1. Start from a clean slate: empty audit tables, empty CRM and Plane project,
+   only the act 1 emails live (`scripts/release_demo_emails.sh reset`). Do not
+   use `scripts/reset_demo.sh` for this: it deletes the EspoCRM volume and its
+   API key. The `demo-runbook` skill (`.claude/skills/`) has the checks and
+   the exact commands.
 2. Create your reviewer account:
    `docker compose exec app python -m app.cli create-user demo`
 3. Open http://localhost:8000/approvals and sign in. Keep EspoCRM
@@ -120,6 +123,8 @@ quote it from a rehearsal.
 
 ## Resetting
 
-`scripts/reset_demo.sh` wipes everything. `scripts/release_demo_emails.sh
-reset` only re-hides the act 2 and 3 emails (it does not clear the database
-or the target systems).
+`scripts/release_demo_emails.sh reset` re-hides the act 2 and 3 emails; it does
+not clear the database or the target systems (the `demo-runbook` skill covers
+those). `scripts/reset_demo.sh` wipes every container volume, including the
+EspoCRM API key, so only use it when you mean to rebuild everything from
+scratch.
