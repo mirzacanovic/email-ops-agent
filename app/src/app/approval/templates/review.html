@@ -7,16 +7,33 @@
     body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
     .action { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
     .action h3 { margin: 0 0 0.5rem; }
+    nav a { margin-right: 1rem; }
     .meta { color: #666; font-size: 0.85rem; }
     pre { background: #f6f6f6; padding: 0.75rem; border-radius: 6px; overflow-x: auto; }
+    .banner { padding: 0.6rem 0.9rem; border-radius: 6px; margin-bottom: 1rem; }
+    .banner.ok { background: #e7f6ec; }
+    .banner.warn { background: #fff4d6; }
+    .banner.error { background: #fde8e8; }
     .buttons button { margin-right: 0.5rem; }
   </style>
 </head>
 <body>
+  <nav><a href="/approvals"><strong>Approvals</strong></a> <a href="/metrics">Metrics</a></nav>
   <h1>Pending approvals</h1>
+  {% if poll == "ok" %}
+    <div class="banner ok">Checked the inbox: {{ processed }} new message{{ "" if processed == 1 else "s" }} processed.</div>
+  {% elif poll == "busy" %}
+    <div class="banner warn">A poll is already in progress — refresh in a moment.</div>
+  {% elif poll == "error" %}
+    <div class="banner error">Polling failed (is the email simulator reachable?). Check the server logs.</div>
+  {% endif %}
+
+  <form method="post" action="/ingest/poll-form" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Checking inbox…'">
+    <button type="submit">Check inbox now</button>
+  </form>
 
   {% if not pending %}
-    <p>Nothing waiting on review yet. Send an email through the simulator to get started.</p>
+    <p>Nothing waiting on review yet. Click “Check inbox now” to pull in new emails.</p>
   {% endif %}
 
   {% for action in pending %}

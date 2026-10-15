@@ -36,29 +36,66 @@ trust this in front of a client."
   stronger local model (Mistral Small, Mixtral), or treat the
   human-approval step as the actual safety net here rather than trying
   to prompt-engineer this away entirely.
-- **The ingestion cursor doesn't handle failed messages.**
-  `poll_and_process`'s `since` cursor is `max(received_at)` over
-  *successfully* processed messages — an email that fails (transient
-  error, timeout) becomes permanently unreachable once a *later* email
-  succeeds, since the cursor has already moved past it. Needs
-  per-message processed-state instead of a single watermark.
-- **No real auth on the approval UI.** `DEMO_APPROVER` is hardcoded in
-  `approval/routes.py`. Fine for a solo demo, not for anything with more
-  than one reviewer.
-- **`create_all` instead of Alembic.** Fine while the schema is still
-  moving; switch before the audit trail holds anything real.
-- **No way to trigger ingestion from the UI.** `/ingest/poll` is
-  curl-only right now — a button on the approvals page would make the
-  demo self-contained.
 
 ## Phase 2: demo polish
 
-- 3–5 rehearsed golden-path scenarios plus 1–2 deliberate edge cases (no
-  match found, ambiguous intent, low-confidence escalation) — a fixed
-  script for walkthroughs rather than whatever the fixtures happen to do.
-- A simple metrics view (time-to-resolution, approval rate, confidence
-  distribution) — numbers land better than "look, it worked" in a pitch.
-- Recorded walkthrough plus written case-study framing.
+Done, and rehearsed once end to end on the live stack (2026-10-05; see
+[demo-script.md](demo-script.md) for what actually happened):
+
+- Scripted three-act walkthrough with release script
+  ([docs/demo-script.md](demo-script.md)). Writing it exposed that the
+  classifier had no way to say "not a customer email" and that confidence
+  never gated anything, so the edge cases couldn't actually occur; both are
+  now real (`other` intent, `CLASSIFY_CONFIDENCE_FLOOR`).
+- Metrics page at `/metrics` (approval rate, time to decision, action and
+  confidence breakdowns), computed from the audit trail.
+
+Still to do:
+
+- Recorded walkthrough (the one remaining `[TODO]` in
+  [case-study.md](case-study.md), whose results are filled in from the rehearsal).
+
+## Found in the rehearsal
+
+**Fixed by the prompt change (2026-10-09), verified on the model only** —
+classify + extract were run read-only on the six fixtures and on five unseen
+emails, but not yet re-run end to end through approvals:
+
+- *Spam classified `sales_inquiry`* -> now `other` (the fixture, plus held-out
+  SEO-agency and newsletter emails; 5 of 5 held-out emails classified as
+  expected). Caveat: `other`'s definition names agencies and newsletters, so
+  those two held-out cases are not a wholly unseen category.
+- *Plane title was the sender's name / Lead description was the literal
+  intent* -> titles now come from the subject, descriptions summarise the
+  request (including the follow-up's pilot request).
+- *Confidence always 0.95* -> partly: vague emails now come back at 0.6
+  (clear ones still 0.95, spam at 0.9), so the 0.5 floor still would not have
+  fired on any of them. Revisit the floor value or the signal.
+- Side effect found and fixed: better titles broke the follow-up match (the
+  model's "CSV export issue" scores 0.28 against the original, threshold
+  0.55; the old match only worked because both titles were "Jordan Lee").
+  `find_similar_issues` now also scores the normalized email subject
+  (`Re:`/`Fwd:`/`AW:` stripped), which matches at about 1.0.
+
+**Still open:**
+
+- **Re-run the full three-act script** on a clean slate to confirm the
+  prompt and matching changes end to end (the probe covered the model, not
+  the pipeline). Needs Plane and EspoCRM emptied again.
+- **Confidence is still a weak signal** (see above); the floor needs a better
+  signal or a higher value before it can be demoed.
+- **Prompt fit to the fixtures**: the classify examples were written after
+  seeing the failures, so the six fixtures overstate accuracy. Grow the
+  held-out set before trusting any accuracy number.
+- **Cold start**: first load of the 7B model took ~19 minutes, and the app's
+  300 s Ollama timeout aborts the load, so a cold stack never recovers on
+  its own. Consider `OLLAMA_KEEP_ALIVE` set high in `docker-compose.yml`, a
+  warm-up step in `ollama-pull`, and a readiness check.
+- **EspoCRM's 30 s timeout is too tight** while Ollama saturates the CPU
+  (one search timed out mid-rehearsal; the per-message retry recovered it).
+- **`/ingest/poll` blocks for the whole batch** (~4 min per email), so a
+  client or browser timeout is likely. Fine for the demo with a long timeout;
+  would want a background job with a status endpoint for anything else.
 
 ## Phase 3: expansion
 

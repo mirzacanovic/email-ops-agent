@@ -1,0 +1,8 @@
+{
+  "id": "msg-005",
+  "from": "outreach@talentbridge-recruiting.example",
+  "to": "sales@demo-company.test",
+  "subject": "Exclusive offer: staff augmentation at 30% below market rates",
+  "body": "Hi there,\n\nTalentBridge places pre-vetted engineers within 48 hours. Reply to this email to book a 15-minute intro call and receive our rate card.\n\nKind regards,\nMarcus\nTalentBridge Recruiting",
+  "received_at": "2026-09-18T14:20:00Z"
+}

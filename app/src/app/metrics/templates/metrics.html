@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Metrics — Email Ops Agent</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
+    nav a { margin-right: 1rem; }
+    .tiles { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+    .tile { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem 1.1rem; min-width: 150px; }
+    .tile .value { font-size: 1.8rem; font-weight: 600; }
+    .tile .label { color: #666; font-size: 0.85rem; }
+    h2 { margin-top: 2rem; font-size: 1.1rem; }
+    .row { display: flex; align-items: center; margin: 0.35rem 0; }
+    .row .name { width: 11rem; }
+    .row .bar { background: #4a7bd0; height: 0.9rem; border-radius: 3px; min-width: 2px; }
+    .row .count { margin-left: 0.6rem; color: #444; }
+  </style>
+</head>
+<body>
+  <nav><a href="/approvals">Approvals</a> <a href="/metrics"><strong>Metrics</strong></a></nav>
+  <h1>Metrics</h1>
+
+  {% if not m.proposals %}
+    <p>No data yet — check the inbox from the approvals page first.</p>
+  {% else %}
+  <div class="tiles">
+    <div class="tile"><div class="value">{{ m.emails_processed }}</div><div class="label">emails processed</div></div>
+    <div class="tile"><div class="value">{{ m.pending }}</div><div class="label">awaiting review</div></div>
+    <div class="tile">
+      <div class="value">{% if m.approval_rate is not none %}{{ "%.0f"|format(m.approval_rate * 100) }}%{% else %}—{% endif %}</div>
+      <div class="label">approval rate ({{ m.approved }} approved, {{ m.rejected }} rejected)</div>
+    </div>
+    <div class="tile"><div class="value">{{ time_to_decision }}</div><div class="label">median time to decision</div></div>
+    <div class="tile"><div class="value">{{ m.executed }}/{{ m.executed + m.execution_failures }}</div><div class="label">executions succeeded</div></div>
+  </div>
+
+  {% macro bars(title, data) %}
+    <h2>{{ title }}</h2>
+    {% set top = data.values() | max %}
+    {% for name, count in data.items() %}
+      <div class="row">
+        <span class="name">{{ name }}</span>
+        <span class="bar" style="width: {{ (count / top * 300) if top else 0 }}px"></span>
+        <span class="count">{{ count }}</span>
+      </div>
+    {% endfor %}
+  {% endmacro %}
+
+  {{ bars("Proposed action", m.by_action_type) }}
+  {{ bars("Classified intent", m.by_intent) }}
+  {{ bars("Proposal confidence", m.confidence_distribution) }}
+  {% endif %}
+</body>
+</html>

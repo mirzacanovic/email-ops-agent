@@ -6,7 +6,7 @@ decision is always reconstructable from `email_message_id` alone.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -27,9 +27,15 @@ class EmailMessage(Base):
     a real inbox)."""
 
     __tablename__ = "email_messages"
+    # Named explicitly so the Alembic migration and the model agree on it.
+    __table_args__ = (
+        UniqueConstraint("source_message_id", name="uq_email_messages_source_message_id"),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    source_message_id: Mapped[str] = mapped_column(String)  # id from the simulator/inbox
+    # id from the simulator/inbox; unique (see table args) so a message can
+    # never be ingested twice
+    source_message_id: Mapped[str] = mapped_column(String)
     sender: Mapped[str] = mapped_column(String)
     subject: Mapped[str] = mapped_column(String)
     body: Mapped[str] = mapped_column(Text)
@@ -66,6 +72,19 @@ class ProposedAction(Base):
     candidate_matches: Mapped[list] = mapped_column(JSON)  # all matches considered
     rationale: Mapped[str] = mapped_column(Text)
     confidence: Mapped[float] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class User(Base):
+    """A reviewer who can log in to the approval UI. Not part of the
+    append-only audit trail itself -- decisions record the username, so
+    history survives even if a user is later removed."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    username: Mapped[str] = mapped_column(String, unique=True)
+    password_hash: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

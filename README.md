@@ -23,7 +23,8 @@ Demo stack (Phase 1):
 See [docs/architecture.md](docs/architecture.md) for how the pieces fit
 together, [docs/plane-setup.md](docs/plane-setup.md) for why Plane isn't
 in `docker-compose.yml`, [docs/llm-backend.md](docs/llm-backend.md) for
-the LLM backend choice, and [docs/roadmap.md](docs/roadmap.md) for what's
+the LLM backend choice, [docs/case-study.md](docs/case-study.md) for the
+project written up for a non-technical reader, and [docs/roadmap.md](docs/roadmap.md) for what's
 done, what's next, and what's deliberately out of scope for now.
 
 ## Repo layout
@@ -43,12 +44,14 @@ email-ops-agent/
 │       ├── pipeline/         # classify -> extract -> match -> propose -> execute
 │       ├── approval/         # human-in-the-loop review UI
 │       ├── audit/            # audit-log models
-│       └── db/               # SQLAlchemy session (create_all for now; Alembic later)
+│       ├── metrics/          # /metrics page, computed from the audit trail
+│       └── db/               # SQLAlchemy session + programmatic Alembic runner
 ├── email-simulator/          # serves fixture emails over HTTP
 │   ├── pytest.ini
 │   ├── tests/
-│   └── src/email_simulator/fixtures/
-├── scripts/                  # seed data, demo reset
+│   ├── demo-scenarios/       # act 2/3 emails, released on cue for demos
+│   └── src/email_simulator/fixtures/   # emails currently live
+├── scripts/                  # seed data, demo reset, staged email release
 └── docs/
 ```
 
@@ -68,12 +71,26 @@ email-ops-agent/
 6. Ollama: http://localhost:11434 (`GET /api/tags` to confirm the model pulled)
 7. Adminer (DB browser, for watching the audit trail fill up live):
    http://localhost:8082 — system: PostgreSQL, server: `app-db`
-8. Run the pipeline: `curl -X POST http://localhost:8000/ingest/poll` pulls
+8. Create a reviewer account (the approvals page and `/ingest/*` require
+   HTTP Basic auth; with no users, everything answers 401). You're
+   prompted for the password:
+   `docker compose exec app python -m app.cli create-user alice`
+   (`set-password <username>` changes one later.)
+9. Run the pipeline: click **Check inbox now** on the approvals page, or
+   `curl -u alice -X POST http://localhost:8000/ingest/poll` — pulls
    whatever's new from the email simulator through
    classify → extract → match → propose.
-9. Review proposals: http://localhost:8000/approvals — approve calls the
-   target system's API for real (EspoCRM if `ESPOCRM_API_KEY` is set;
-   Plane if `PLANE_*` is configured), reject just records the decision.
+10. Review proposals: http://localhost:8000/approvals — approve calls the
+    target system's API for real (EspoCRM if `ESPOCRM_API_KEY` is set;
+    Plane if `PLANE_*` is configured), reject just records the decision.
+    The signed-in username is recorded as the approver on each decision.
+
+Basic auth sends credentials on every request: fine on localhost, but put
+TLS in front of it (reverse proxy) before exposing it anywhere else.
+
+For a presentable run-through, follow [docs/demo-script.md](docs/demo-script.md);
+http://localhost:8000/metrics shows approval rate, time to decision and the
+action/confidence breakdown.
 
 ## Development
 

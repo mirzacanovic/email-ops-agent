@@ -1,3 +1,5 @@
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Any
@@ -58,11 +60,21 @@ async def find_candidate_matches(
     return sorted(candidates, key=lambda c: c.score, reverse=True)
 
 
+_SUBJECT_PREFIX = re.compile(r"^\s*((re|fwd?|aw|wg)\s*:\s*)+", re.IGNORECASE)
+
+
+def normalize_subject(subject: str) -> str:
+    """Strip reply/forward prefixes ("Re:", "Fwd:", German "AW:"/"WG:") so a
+    follow-up's subject compares equal to the original email's subject."""
+    return _SUBJECT_PREFIX.sub("", subject).strip()
+
+
 async def find_similar_issues(
     connector: SystemConnector,
     entity_type: str,
     candidate_title: str,
     sender_email: str,
+    alt_titles: Sequence[str] = (),
 ) -> list[CandidateMatch]:
     """Search for existing Plane issues that might already cover the same
     problem as a new support request, so a follow-up ("any update on the
@@ -87,13 +99,23 @@ async def find_similar_issues(
     empty) to single-resource lookup semantics (404 when nothing matches)
     — undocumented, but reproducible. `external_source` is still set at
     creation time as informational tagging, just not used as a filter.
+
+    Each issue is scored against `candidate_title` and every entry in
+    `alt_titles`, keeping the best score. Callers pass the email's
+    normalized subject as an alternative: the model-written title is a
+    paraphrase that can differ a lot from the original issue's title
+    ("CSV export issue" vs "Export button throws an error..." scores 0.28),
+    while the follow-up's own subject usually matches it almost exactly.
     """
     prior_issues = await connector.search_records(entity_type, {"external_id": sender_email})
     candidates = [
         CandidateMatch(
             record=issue,
             match_reason="fuzzy_title",
-            score=_name_similarity(candidate_title, issue.get("name", "")),
+            score=max(
+                _name_similarity(title, issue.get("name", ""))
+                for title in (candidate_title, *alt_titles)
+            ),
         )
         for issue in prior_issues
     ]

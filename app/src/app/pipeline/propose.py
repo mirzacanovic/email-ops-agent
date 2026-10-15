@@ -27,6 +27,7 @@ async def propose_action(
     extracted_fields: dict[str, Any],
     candidate_matches: list[CandidateMatch],
     sender_email: str,
+    escalation_reason: str | None = None,
 ) -> ProposedActionDraft:
     """Decide what action to propose, given where the caller has already
     routed this intent (`target_system`/`entity_type` — see
@@ -34,9 +35,10 @@ async def propose_action(
     mapped to systems) and what `match.find_candidate_matches` /
     `match.find_similar_issues` found.
 
-    `target_system` is None when the intent has no route yet (e.g.
-    "project_status_question", which would need its own handling) — that
-    always escalates rather than guessing.
+    `target_system` is None when the intent has no route (e.g. "other") or
+    the caller overrode it because the classifier wasn't confident enough
+    (`escalation_reason` then says why) — that always escalates rather
+    than guessing.
     """
     if target_system is None or entity_type is None:
         return ProposedActionDraft(
@@ -45,8 +47,9 @@ async def propose_action(
             entity_type="n/a",
             record_id=None,
             fields=extracted_fields,
-            rationale=(
-                f"Intent {intent!r} has no automated action defined yet — "
+            rationale=escalation_reason
+            or (
+                f"Intent {intent!r} has no automated action defined — "
                 "flagging for manual handling rather than guessing."
             ),
             confidence=0.0,

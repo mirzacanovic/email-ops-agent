@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.models import EmailMessage, ExtractionResult, ProposedAction
@@ -18,7 +18,12 @@ from app.connectors.base import SystemConnector
 from app.llm.base import LLMClient
 from app.pipeline.classify import classify
 from app.pipeline.extract import extract
-from app.pipeline.match import CandidateMatch, find_candidate_matches, find_similar_issues
+from app.pipeline.match import (
+    CandidateMatch,
+    find_candidate_matches,
+    find_similar_issues,
+    normalize_subject,
+)
 from app.pipeline.propose import propose_action
 
 logger = logging.getLogger(__name__)
@@ -36,8 +41,21 @@ INTENT_ROUTES: dict[str, str] = {
 }
 
 
+# Below this classifier confidence the email is escalated to a human rather
+# than acted on, even if its intent has a route. Deliberately conservative:
+# a wrongly-routed CRM/Plane action costs more than one extra manual review.
+CLASSIFY_CONFIDENCE_FLOOR = 0.5
+
+
 def _parse_iso(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+async def _fetch_messages(email_simulator_url: str) -> list[dict[str, Any]]:
+    async with httpx.AsyncClient(base_url=email_simulator_url, timeout=10.0) as client:
+        response = await client.get("/messages")
+        response.raise_for_status()
+        return response.json()
 
 
 async def poll_and_process(
@@ -53,14 +71,15 @@ async def poll_and_process(
     Each message is committed independently, so one failure (a malformed
     email, a transient connector error) is logged and skipped rather
     than losing progress on — or blocking — the rest of the batch.
-    """
-    since = db.scalar(select(func.max(EmailMessage.received_at)))
 
-    async with httpx.AsyncClient(base_url=email_simulator_url, timeout=10.0) as client:
-        params = {"since": since.isoformat()} if since else {}
-        response = await client.get("/messages", params=params)
-        response.raise_for_status()
-        messages = response.json()
+    "Already processed" is decided per message (by `source_message_id`),
+    not by a received_at watermark: a failed message is rolled back and
+    leaves no row, so it is simply fetched and retried on the next poll
+    even after a later message has succeeded.
+    """
+    messages = await _fetch_messages(email_simulator_url)
+    already_processed = set(db.scalars(select(EmailMessage.source_message_id)))
+    messages = [m for m in messages if m["id"] not in already_processed]
 
     processed = 0
     for message in messages:
@@ -95,6 +114,14 @@ async def _process_one(
 
     classification = await classify(llm, email.subject, email.body)
     target_system = INTENT_ROUTES.get(classification.intent)
+    escalation_reason: str | None = None
+    if target_system is not None and classification.confidence < CLASSIFY_CONFIDENCE_FLOOR:
+        escalation_reason = (
+            f"Classifier was only {classification.confidence:.0%} sure this is a "
+            f"{classification.intent!r} (floor is {CLASSIFY_CONFIDENCE_FLOOR:.0%}) — "
+            "flagging for manual handling rather than guessing."
+        )
+        target_system = None
 
     entity_type: str | None = None
     extracted_fields: dict[str, Any] = {}
@@ -120,6 +147,7 @@ async def _process_one(
             entity_type,
             extracted_fields.get("name", email.subject),
             sender_email=email.sender,
+            alt_titles=[normalize_subject(email.subject)],
         )
 
     db.add(
@@ -139,6 +167,7 @@ async def _process_one(
         extracted_fields,
         candidate_matches,
         sender_email=email.sender,
+        escalation_reason=escalation_reason,
     )
     db.add(
         ProposedAction(
