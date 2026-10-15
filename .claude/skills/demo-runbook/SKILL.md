@@ -38,11 +38,14 @@ In this order, because later steps depend on earlier ones:
    `docker compose up -d app`. Do not `source .env` in the same shell first:
    Compose lets exported shell variables override the file, so the container
    silently keeps the old value.
-2. **Model cold.** Run the warm-up command the preflight prints and wait for
-   it to return. A cold load took 20-30 minutes on this machine, and Ollama
+2. **Model cold.** `docker compose up` now starts a warm-up (the
+   `ollama-warm` service) and `GET /ready` on the app answers 503 until the
+   model is loaded and 200 when it is. If the stack was already running without
+   that service, run the warm-up command the preflight prints instead and wait
+   for it to return. A cold load took 20-30 minutes on this machine, and Ollama
    only reports the model as loaded once it is fully ready, so the wait is
    the point. The app's own requests time out after 5 minutes and abort the
-   load each time, so polling before the warm-up finishes makes things worse,
+   load each time, so polling before the model is loaded makes things worse,
    not better. Run it in the background and tell the user it is a long wait.
 3. **Audit DB not empty.** Already-processed emails are skipped by design, so
    old rows stop the acts from replaying. This deletes audit rows, so confirm
@@ -66,9 +69,11 @@ In this order, because later steps depend on earlier ones:
   prompt or matching changes has been verified end to end, and the dry run is
   where that gets found out, not in front of an audience.
 - Expect about 3-4 minutes per email on CPU, so a full run is 25+ minutes
-  of mostly waiting. A poll blocks until the whole batch is done, and a
-  client-side timeout does not stop it: the server keeps going, so check the
-  database before triggering another poll.
+  of mostly waiting. "Check inbox now" starts a background job and returns at once; the page shows
+  "N of M emails done" and refreshes itself, and `GET /ingest/status` has the same
+  numbers. The older synchronous `POST /ingest/poll` still blocks for the whole
+  batch, and a client-side timeout does not stop it, so use `/ingest/start`
+  for anything scripted.
 - Free RAM matters. With the host nearly out of memory the docker CLI hangs
   and model calls time out. The preflight warns about it; closing other apps
   is the fix.

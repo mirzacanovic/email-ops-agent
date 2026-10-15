@@ -25,7 +25,9 @@ class PlaneConnector(SystemConnector):
     knows how to pick a project.
     """
 
-    def __init__(self, base_url: str, api_key: str, workspace_slug: str) -> None:
+    def __init__(
+        self, base_url: str, api_key: str, workspace_slug: str, timeout: float = 30.0
+    ) -> None:
         self._workspace_slug = workspace_slug
         # 30s, not the more typical 10s: this is a real internet round
         # trip to Plane Cloud, running alongside a CPU-bound local model
@@ -34,7 +36,7 @@ class PlaneConnector(SystemConnector):
         self._client = httpx.AsyncClient(
             base_url=f"{base_url.rstrip('/')}/api/v1/workspaces/{workspace_slug}",
             headers={"x-api-key": api_key},
-            timeout=30.0,
+            timeout=timeout,
         )
 
     async def search_records(

@@ -107,7 +107,7 @@ class EspoCRMConnector(SystemConnector):
     Auth: header `X-Api-Key: <key>` from an EspoCRM API User.
     """
 
-    def __init__(self, base_url: str, api_key: str) -> None:
+    def __init__(self, base_url: str, api_key: str, timeout: float = 60.0) -> None:
         # 10s was too tight in practice: a request timed out here while
         # running alongside Ollama inference under load, failing a
         # message that would otherwise have succeeded (same class of
@@ -115,7 +115,7 @@ class EspoCRMConnector(SystemConnector):
         self._client = httpx.AsyncClient(
             base_url=f"{base_url.rstrip('/')}/api/v1",
             headers={"X-Api-Key": api_key},
-            timeout=30.0,
+            timeout=timeout,
         )
 
     async def search_records(

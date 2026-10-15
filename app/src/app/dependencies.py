@@ -13,7 +13,11 @@ from app.llm.factory import get_llm_client
 @lru_cache
 def get_espocrm_connector() -> EspoCRMConnector:
     settings = get_settings()
-    return EspoCRMConnector(base_url=settings.espocrm_base_url, api_key=settings.espocrm_api_key)
+    return EspoCRMConnector(
+        base_url=settings.espocrm_base_url,
+        api_key=settings.espocrm_api_key,
+        timeout=settings.espocrm_timeout_seconds,
+    )
 
 
 @lru_cache
@@ -23,6 +27,7 @@ def get_plane_connector() -> PlaneConnector:
         base_url=settings.plane_api_base_url,
         api_key=settings.plane_api_key,
         workspace_slug=settings.plane_workspace_slug,
+        timeout=settings.plane_timeout_seconds,
     )
 
 

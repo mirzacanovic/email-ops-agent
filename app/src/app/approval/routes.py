@@ -12,19 +12,16 @@ from app.connectors.espocrm import EspoCRMConnector
 from app.connectors.plane import PlaneConnector
 from app.db.session import get_db
 from app.dependencies import get_espocrm_connector, get_plane_connector
+from app.ingestion import jobs
 from app.pipeline.execute import execute_action
 from app.pipeline.propose import ProposedActionDraft
 
 router = APIRouter(prefix="/approvals", tags=["approvals"], dependencies=[Depends(require_user)])
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
+
 @router.get("", response_class=HTMLResponse)
-def list_pending_approvals(
-    request: Request,
-    db: Session = Depends(get_db),
-    poll: str | None = None,
-    processed: int | None = None,
-) -> HTMLResponse:
+def list_pending_approvals(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
     already_decided = select(ApprovalDecision.proposed_action_id)
     pending = db.scalars(
         select(ProposedAction)
@@ -34,7 +31,7 @@ def list_pending_approvals(
     return templates.TemplateResponse(
         request,
         "review.html",
-        {"pending": pending, "poll": poll, "processed": processed},
+        {"pending": pending, "job": jobs.status()},
     )
 
 
