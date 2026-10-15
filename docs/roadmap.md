@@ -57,9 +57,11 @@ Still to do:
 
 ## Found in the rehearsal
 
-**Fixed by the prompt change (2026-10-09), verified on the model only** —
-classify + extract were run read-only on the six fixtures and on five unseen
-emails, but not yet re-run end to end through approvals:
+**Fixed by the prompt change (2026-10-09), then confirmed end to end on
+2026-10-15** — a full three-act run through approvals (6 emails, 6 executed;
+spam and the vague email escalated; both follow-ups updated rather than
+duplicated). Separately, classify + extract were run read-only on the six
+fixtures and on five unseen emails (5 of 5 as expected). Both are single runs:
 
 - *Spam classified `sales_inquiry`* -> now `other` (the fixture, plus held-out
   SEO-agency and newsletter emails; 5 of 5 held-out emails classified as
@@ -79,9 +81,6 @@ emails, but not yet re-run end to end through approvals:
 
 **Still open:**
 
-- **Re-run the full three-act script** on a clean slate to confirm the
-  prompt and matching changes end to end (the probe covered the model, not
-  the pipeline). Needs Plane and EspoCRM emptied again.
 - **Confidence is still a weak signal** (see above); the floor needs a better
   signal or a higher value before it can be demoed.
 - **Prompt fit to the fixtures**: the classify examples were written after
