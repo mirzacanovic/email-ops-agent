@@ -1,0 +1,14 @@
+{
+  "_readme": "Expected intent for the six demo fixtures (email-simulator/src/email_simulator/fixtures and demo-scenarios/act*). These are NOT held-out: the prompt's examples were written after seeing msg-005 and msg-006 fail, so passing them shows the known failures are fixed, not how well the prompt generalises. 'threads' lists follow-up pairs whose Plane issue must still match: the follow-up's title or normalized subject has to score >= the matcher's threshold against the original issue's title.",
+  "intents": {
+    "msg-001": "support_request",
+    "msg-002": "sales_inquiry",
+    "msg-003": "project_status_question",
+    "msg-004": "sales_inquiry",
+    "msg-005": "other",
+    "msg-006": "other"
+  },
+  "threads": [
+    {"original": "msg-001", "followup": "msg-003"}
+  ]
+}

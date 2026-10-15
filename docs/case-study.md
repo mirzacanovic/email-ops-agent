@@ -161,17 +161,31 @@ What it showed, including the parts that don't flatter the model:
   model load took about 19 minutes. Fine for an approval-queue pilot, not for
   anything interactive.
 
-**After a prompt change (2026-10-09), model-level check only.** I rewrote the
-classification and extraction prompts to address those failures and re-ran
-the model read-only, without approvals or writes. The spam was then
-classified `other`, the issue title came from the subject, and descriptions
-summarised the request. On five fresh emails the prompt had not been
-tuned on, all five were classified as expected. This is small and not yet
-re-run through the full pipeline, and the prompt's examples were written
-after seeing the failures, so treat it as "the specific failures are
-fixed", not as an accuracy figure. The better titles also exposed a matching
-weakness (a follow-up would have been filed as a duplicate), which is now
-fixed by matching on the email subject as well.
+**Second run, after a prompt change (2026-10-15).** I rewrote the
+classification and extraction prompts to address those failures, fixed the
+matching they exposed (a follow-up would otherwise have been filed as a
+duplicate, so it now also matches on the email subject), and ran the same
+six emails end to end again. Figures below are read from the audit trail.
+
+| | First run (10-05) | Second run (10-15) |
+|---|---|---|
+| Emails processed | 6 | 6 |
+| Proposals approved / rejected | 5 / 1 | 6 / 0 |
+| Approved actions that executed | 5 of 5 | 6 of 6 |
+| Follow-ups updated instead of duplicated | 2 of 2 | 2 of 2 (the Plane match now at title similarity 1.00) |
+| Emails correctly treated as not-a-customer-message | 1 of 2 | 2 of 2 (spam and the vague email both escalated) |
+| Junk reaching the CRM | 0 (rejected at review) | 0 (never proposed) |
+| Issue title | the sender's name | the email's subject |
+| Lead description | the word `sales_inquiry` | a summary of the request |
+
+Read this carefully: it is one run, on the same six emails the fixes were
+written against, so it shows the specific failures are fixed, not an accuracy
+rate. As a separate check, five fresh emails the prompt had not been tuned on
+(an SEO pitch, a newsletter, a login problem, an on-prem licensing question,
+a vague "Hi") were all classified as expected, but that is five emails. Model
+confidence is still a weak signal: clear emails come back at 0.9 to 0.95, so
+the confidence floor never fired; the vague email escalated because it was
+classified `other`, not because of the floor.
 
 Recorded walkthrough: `[TODO: link]`
 

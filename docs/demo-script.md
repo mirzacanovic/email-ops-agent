@@ -4,10 +4,11 @@ A fixed, repeatable walkthrough (~10 minutes) instead of "whatever the
 fixtures happen to do". Three acts: the golden path, the system recognising
 what it has already seen, and the cases where it deliberately *doesn't* act.
 
-> **Status: rehearsed once end to end on 2026-10-05** (Mistral 7B on CPU,
-> real EspoCRM and Plane). The "observed" notes below are what actually
-> happened. Acts 1 and 2 matched the script; **Act 3 did not** (the model
-> misclassified the spam), and the script is rewritten around that.
+> **Status: rehearsed end to end twice** (Mistral 7B on CPU, real EspoCRM and
+> Plane). On 2026-10-05 Acts 1 and 2 matched the script and **Act 3 did not**
+> (the model misclassified the spam). After the prompt and matching changes, a
+> second full run on 2026-10-15 matched the script in all three acts (see the
+> Act 3 note). Both are single runs on the same fixtures.
 
 ## Before you start
 
@@ -78,11 +79,12 @@ queries the live systems. This is also why the emails are released in acts.
 
 `scripts/release_demo_emails.sh act3`, then **Check inbox now**.
 
-> **Update 2026-10-09:** after a prompt change the model classifies the spam
-> as `other` (and the vague email as `other` at 0.6), so both should now
-> escalate as originally intended. That is verified at the model level only
-> (read-only run), **not yet end to end**. Re-run Act 3 before relying on it,
-> and keep the reject-the-spam beat below as the fallback.
+> **Update 2026-10-15: confirmed end to end.** After the prompt change, a full
+> run (read from the audit trail) classified the spam as `other` and the vague
+> email as `other` at 0.6; both escalated as originally intended, and all six
+> approved actions executed. It is one run on the fixtures the prompt was
+> tuned against, so keep the reject-the-spam beat below as the fallback in
+> case the model does something different on the day.
 
 **What the script originally expected:** both emails escalate. **What
 happened in the first rehearsal (before the prompt change), with Mistral 7B:**
