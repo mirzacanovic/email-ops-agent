@@ -32,6 +32,10 @@ class Metrics:
     decided: int = 0
     approved: int = 0
     rejected: int = 0
+    # of the approved ones, how many the reviewer changed first (a direct measure
+    # of how often the model's proposal needed a human fix)
+    edited: int = 0
+    edit_rate: float | None = None
     # share of decided proposals that were approved; None until one is decided
     approval_rate: float | None = None
     executed: int = 0
@@ -74,6 +78,9 @@ def compute_metrics(db: Session) -> Metrics:
     m.pending = m.proposals - m.decided
     m.approved = sum(1 for d in decisions if d.decision in ("approved", "edited"))
     m.rejected = sum(1 for d in decisions if d.decision == "rejected")
+    m.edited = sum(1 for d in decisions if d.decision == "edited")
+    if m.approved:
+        m.edit_rate = m.edited / m.approved
     if m.decided:
         m.approval_rate = m.approved / m.decided
         # Time a human took to act on a proposal (proposal created -> decision).

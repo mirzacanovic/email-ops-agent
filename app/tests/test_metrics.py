@@ -133,3 +133,22 @@ def test_metrics_page_renders_and_requires_login(session_factory):
     page = client.get("/metrics")
     assert page.status_code == 200
     assert "100%" in page.text and "45s" in page.text
+
+
+def test_edited_approvals_are_counted_as_approved_and_measured_separately(session_factory):
+    with session_factory() as db:
+        for n, decision in enumerate(["approved", "edited", "edited", "rejected"], start=1):
+            _decide(db, _add_proposal(db, n, "support_request", "create_record", 0.9), decision, 30)
+        db.commit()
+        m = compute_metrics(db)
+
+    assert (m.approved, m.edited, m.rejected) == (3, 2, 1)  # an edited approval is still approved
+    assert m.edit_rate == pytest.approx(2 / 3)
+    assert m.approval_rate == pytest.approx(3 / 4)
+
+
+def test_edit_rate_is_empty_until_something_is_approved(session_factory):
+    with session_factory() as db:
+        _decide(db, _add_proposal(db, 1, "other", "create_record", 0.9), "rejected", 30)
+        db.commit()
+        assert compute_metrics(db).edit_rate is None

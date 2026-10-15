@@ -54,6 +54,14 @@ end to end.) This is the
 open-ended-extraction weakness (see the roadmap), and it is exactly what the
 approval step exists to catch — a reviewer would fix these before approving.
 
+**Optional beat: edit before approving.** On either card open *Edit before
+approving*, change one thing (add a sentence to the description, or lower the
+priority), and use *Approve with these edits*. The real record carries your
+version, the audit trail keeps both what the model proposed and what you
+changed, and `/metrics` counts it under "of approvals edited first". This is
+the most convincing demonstration that a person is in control, and it makes
+the weak free-text extraction a feature of the demo, not a flaw in it.
+
 **Approve both**, then show the new Plane work item and the EspoCRM Lead.
 Nothing was written until the click; the audit trail (Adminer, :8082)
 shows email → extraction → proposal → decision → execution.
