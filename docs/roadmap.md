@@ -49,6 +49,19 @@ Done, and rehearsed once end to end on the live stack (2026-10-05; see
   now real (`other` intent, `CLASSIFY_CONFIDENCE_FLOOR`).
 - Metrics page at `/metrics` (approval rate, time to decision, action and
   confidence breakdowns), computed from the audit trail.
+- Editable fields in the review UI ("Edit before approving"): a reviewer can
+  correct the proposed text before it is sent; the decision is stored as
+  `edited` with only the changed fields, the original proposal is untouched,
+  and `/metrics` shows how often approvals needed an edit. Also fixed on the
+  way: a proposal could be approved or rejected twice (a double click would
+  execute twice and create a duplicate). Verified with unit tests, deliberate
+  breakage of the two key protections, and a live check of the validation path
+  and page rendering; **not** yet run live through an approved edit (that
+  would write a real record to Plane or EspoCRM).
+- Known limits: `description_html` is edited as raw HTML (the reviewer sees
+  `<br>` tags); a field can't be blanked out, only changed; protection against
+  cross-site form posts (CSRF) is not implemented, which matters more now that
+  the form does more.
 
 Still to do:
 

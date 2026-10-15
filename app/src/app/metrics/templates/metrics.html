@@ -31,6 +31,10 @@
       <div class="value">{% if m.approval_rate is not none %}{{ "%.0f"|format(m.approval_rate * 100) }}%{% else %}—{% endif %}</div>
       <div class="label">approval rate ({{ m.approved }} approved, {{ m.rejected }} rejected)</div>
     </div>
+    <div class="tile">
+      <div class="value">{% if m.edit_rate is not none %}{{ "%.0f"|format(m.edit_rate * 100) }}%{% else %}—{% endif %}</div>
+      <div class="label">of approvals edited first ({{ m.edited }} of {{ m.approved }})</div>
+    </div>
     <div class="tile"><div class="value">{{ time_to_decision }}</div><div class="label">median time to decision</div></div>
     <div class="tile"><div class="value">{{ m.executed }}/{{ m.executed + m.execution_failures }}</div><div class="label">executions succeeded</div></div>
   </div>

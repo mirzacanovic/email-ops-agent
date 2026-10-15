@@ -117,8 +117,9 @@ Said plainly, because a client will ask:
 
 - It reads from an email **simulator**, not a real inbox. A real inbox is the
   first step of a pilot, against a sandboxed domain.
-- Approval is binary today (approve or reject) with no field editing in the
-  UI, and every reviewer can approve everything.
+- A reviewer can edit the proposed text before approving, but edits are plain
+  text boxes (descriptions are raw HTML), and every reviewer can approve
+  everything: no roles, no second approver.
 - Authentication is HTTP Basic, which needs TLS in front of it outside
   localhost. There is no login throttling.
 - Extraction quality on free text is the main open risk (see above).
@@ -156,7 +157,8 @@ What it showed, including the parts that don't flatter the model:
 - **Free-text extraction was weak**: the Plane issue was titled with the
   sender's name rather than the subject, and the Lead's description was the
   word `sales_inquiry`. A reviewer would fix these before approving. This is
-  the case for a larger model and for editable fields in the review UI.
+  the case for a larger model, and the reason the review UI lets a person edit
+  the proposal before approving it.
 - **It is slow on CPU**: roughly 3 to 4 minutes per email, and the first
   model load took about 19 minutes. Fine for an approval-queue pilot, not for
   anything interactive.

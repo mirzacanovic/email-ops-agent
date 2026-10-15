@@ -93,7 +93,12 @@ email-ops-agent/
     target system's API for real (EspoCRM if `ESPOCRM_API_KEY` is set;
     Plane if `PLANE_*` is configured), reject just records the decision.
     The signed-in username is recorded as the approver on each decision.
-
+    **Edit before approving** lets the reviewer correct the proposed text
+    (title, description, priority, ...) first: the corrected version is what
+    is sent, the decision is recorded as `edited` with just the changed
+    fields, and the model's original proposal is kept unchanged beside it.
+    Fields the pipeline sets for its own bookkeeping can't be edited, and a
+    proposal can only be decided once.
 Basic auth sends credentials on every request: fine on localhost, but put
 TLS in front of it (reverse proxy) before exposing it anywhere else.
 
