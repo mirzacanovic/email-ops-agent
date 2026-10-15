@@ -1,0 +1,55 @@
+{
+  "_readme": "Emails the classify/extract prompts were NOT tuned on, with the expected intent written down before anyone looked at the model's answer. 'burned': true means a prompt example now resembles this email (or it was used to tune), so it no longer counts as held-out; keep it as a regression case and write a fresh unseen email to replace it. Add new emails here with expected_intent set BEFORE running the check.",
+  "emails": [
+    {
+      "id": "h-1",
+      "from": "growth@rankboost-seo.example",
+      "to": "support@demo-company.test",
+      "subject": "Get your website to page 1 of Google in 30 days",
+      "body": "Hello,\n\nOur SEO experts can double your organic traffic. Packages start at $299/month. Reply YES for a free audit.\n\nRankBoost Team",
+      "received_at": "2026-09-25T09:00:00Z",
+      "expected_intent": "other",
+      "burned": false
+    },
+    {
+      "id": "h-2",
+      "from": "digest@productupdates.example",
+      "to": "support@demo-company.test",
+      "subject": "Your weekly product digest is ready",
+      "body": "Here's what's new this week: 3 new integrations, 2 webinars, and a roundup of community posts. Click here to read more. Unsubscribe at any time.",
+      "received_at": "2026-09-25T09:00:00Z",
+      "expected_intent": "other",
+      "burned": false
+    },
+    {
+      "id": "h-3",
+      "from": "dana.kim@fabrikam-gmbh.example",
+      "to": "support@demo-company.test",
+      "subject": "Can't log in since password reset",
+      "body": "Hi support,\n\nI reset my password this morning and now the login page just spins and never lets me in. I tried two browsers. Our whole accounting team is waiting on this.\n\nDana Kim\nFabrikam GmbH",
+      "received_at": "2026-09-25T09:00:00Z",
+      "expected_intent": "support_request",
+      "burned": false
+    },
+    {
+      "id": "h-4",
+      "from": "t.weber@contoso-retail.example",
+      "to": "support@demo-company.test",
+      "subject": "On-prem option for 200 users?",
+      "body": "Hello,\n\nWe're a 200-person retail company evaluating tools like yours. Do you offer an on-premise deployment, and what would licensing look like for our size?\n\nThomas Weber\nContoso Retail",
+      "received_at": "2026-09-25T09:00:00Z",
+      "expected_intent": "sales_inquiry",
+      "burned": false
+    },
+    {
+      "id": "h-5",
+      "from": "chris@hotmail.example",
+      "to": "support@demo-company.test",
+      "subject": "Hi",
+      "body": "Hi there, are you the right person to talk to about this? Let me know when you have a moment. Thanks!",
+      "received_at": "2026-09-25T09:00:00Z",
+      "expected_intent": "other",
+      "burned": false
+    }
+  ]
+}
