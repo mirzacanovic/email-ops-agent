@@ -121,7 +121,10 @@ Said plainly, because a client will ask:
   text boxes (descriptions are raw HTML), and every reviewer can approve
   everything: no roles, no second approver.
 - Authentication is HTTP Basic, which needs TLS in front of it outside
-  localhost. There is no login throttling.
+  localhost. There is no login throttling. Cross-site request forgery and
+  framing are blocked by checking the browser's own origin headers, but that is
+  a layer on top of a simple login, not a replacement for a proper identity
+  provider.
 - Extraction quality on free text is the main open risk (see above).
 - Auto-execution without approval is out of scope until there is enough
   real-world accuracy data to set a threshold responsibly.

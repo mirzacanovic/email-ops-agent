@@ -59,9 +59,21 @@ Done, and rehearsed once end to end on the live stack (2026-10-05; see
   and page rendering; **not** yet run live through an approved edit (that
   would write a real record to Plane or EspoCRM).
 - Known limits: `description_html` is edited as raw HTML (the reviewer sees
-  `<br>` tags); a field can't be blanked out, only changed; protection against
-  cross-site form posts (CSRF) is not implemented, which matters more now that
-  the form does more.
+  `<br>` tags); a field can't be blanked out, only changed.
+- CSRF and clickjacking protection (`app/security.py`). Basic auth means the
+  browser sends credentials with any request to the host, including one fired
+  from another site, so a middleware refuses state-changing requests whose
+  `Sec-Fetch-Site` is not `same-origin` (or whose `Origin` is not this host)
+  and sets `frame-ancestors 'none'`. It is stateless (no session or token to
+  add), leaves curl and scripts alone, and also refuses other ports on the
+  same host, which count as "same-site" on localhost. A test walks every route
+  the app registers, so a new state-changing route is checked automatically.
+  Verified with unit tests, three deliberate breakages, and requests against
+  the running container; not yet exercised by a real browser clicking the
+  app's own forms (they should send `Sec-Fetch-Site: same-origin`). Limits: it
+  relies on the browser sending those headers (every current browser does), and
+  it does not stop an attacker who can already run script on the app's own
+  origin (that would be an XSS problem; values are escaped in the templates).
 
 Still to do:
 

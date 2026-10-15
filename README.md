@@ -102,6 +102,13 @@ email-ops-agent/
 Basic auth sends credentials on every request: fine on localhost, but put
 TLS in front of it (reverse proxy) before exposing it anywhere else.
 
+Because the browser attaches those credentials to any request to this host,
+including one fired from another website, state-changing requests (anything
+but GET) are refused when the browser says they came from elsewhere
+(`Sec-Fetch-Site` / `Origin`), and the pages cannot be put in a frame; see
+`app/security.py`. Scripts and curl send neither header and are unaffected.
+Behind a reverse proxy, forward the original `Host` header.
+
 For a presentable run-through, follow [docs/demo-script.md](docs/demo-script.md);
 http://localhost:8000/metrics shows approval rate, time to decision and the
 action/confidence breakdown.
