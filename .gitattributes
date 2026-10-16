@@ -1,0 +1,7 @@
+# Git guesses text vs binary from the first few KB. A small generated PDF can
+# look like text, and then a Windows checkout with autocrlf rewrites its line
+# endings and corrupts it. Say so explicitly for files that must never be touched.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.gif binary
