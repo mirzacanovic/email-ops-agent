@@ -11,6 +11,10 @@ Demo stack (Phase 1):
 
 - **Email simulator** — serves fixture emails instead of a real inbox, so
   scenarios are deterministic and replayable.
+- **IMAP bridge** (optional) — serves the same contract from a real IMAP
+  mailbox, read-only, so the pipeline can run on actual mail. Tried so far
+  only against a local sandbox server. See [docs/imap-inbox.md](docs/imap-inbox.md)
+  before pointing it at anything real.
 - **EspoCRM** — CRM (contacts, leads, accounts).
 - **Plane** — project management (issues) — run separately, see
   [docs/plane-setup.md](docs/plane-setup.md).
@@ -53,7 +57,8 @@ email-ops-agent/
 │   ├── tests/
 │   ├── demo-scenarios/       # act 2/3 emails, released on cue for demos
 │   └── src/email_simulator/fixtures/   # emails currently live
-├── scripts/                  # seed data, demo reset, staged email release
+├── imap-bridge/              # optional: the same /messages contract from an IMAP mailbox
+├── scripts/                  # seed data, demo reset, staged email release, sandbox mail sender
 └── docs/
 ```
 
@@ -122,12 +127,13 @@ CI (`.github/workflows/ci.yml`) runs lint, type-check, unit tests, and a
 build of both images on every push/PR. To run the same checks locally:
 
 ```bash
-pip install -r requirements-dev.txt -r app/requirements.txt -r email-simulator/requirements.txt
+pip install -r requirements-dev.txt -r app/requirements.txt -r email-simulator/requirements.txt -r imap-bridge/requirements.txt
 
-ruff check app email-simulator
+ruff check app email-simulator imap-bridge
 
 cd app && MYPYPATH=src mypy src/app tests --explicit-package-bases && pytest && cd ..
 cd email-simulator && MYPYPATH=src mypy src/email_simulator tests --explicit-package-bases && pytest && cd ..
+cd imap-bridge && MYPYPATH=src mypy src/imap_bridge tests --explicit-package-bases && pytest && cd ..
 ```
 
 Unit tests cover the pure-logic pieces — `propose.py`'s decision rules,

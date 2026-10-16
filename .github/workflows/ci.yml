@@ -19,7 +19,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
       - run: pip install -r requirements-dev.txt
-      - run: ruff check app email-simulator
+      - run: ruff check app email-simulator imap-bridge
 
   typecheck:
     runs-on: ubuntu-latest
@@ -33,9 +33,10 @@ jobs:
             requirements-dev.txt
             app/requirements.txt
             email-simulator/requirements.txt
+            imap-bridge/requirements.txt
       - run: >
           pip install -r requirements-dev.txt -r app/requirements.txt
-          -r email-simulator/requirements.txt
+          -r email-simulator/requirements.txt -r imap-bridge/requirements.txt
       # MYPYPATH=src + --explicit-package-bases lets mypy resolve
       # `app.*` / `email_simulator.*` imports the same way pytest's
       # `pythonpath = src` ini option does -- both src/ and tests/ are
@@ -46,6 +47,9 @@ jobs:
       - name: mypy (email-simulator)
         working-directory: email-simulator
         run: MYPYPATH=src mypy src/email_simulator tests --explicit-package-bases
+      - name: mypy (imap-bridge)
+        working-directory: imap-bridge
+        run: MYPYPATH=src mypy src/imap_bridge tests --explicit-package-bases
 
   test:
     runs-on: ubuntu-latest
@@ -59,21 +63,25 @@ jobs:
             requirements-dev.txt
             app/requirements.txt
             email-simulator/requirements.txt
+            imap-bridge/requirements.txt
       - run: >
           pip install -r requirements-dev.txt -r app/requirements.txt
-          -r email-simulator/requirements.txt
+          -r email-simulator/requirements.txt -r imap-bridge/requirements.txt
       - name: pytest (app)
         working-directory: app
         run: pytest
       - name: pytest (email-simulator)
         working-directory: email-simulator
         run: pytest
+      - name: pytest (imap-bridge)
+        working-directory: imap-bridge
+        run: pytest
 
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [app, email-simulator]
+        service: [app, email-simulator, imap-bridge]
     steps:
       - uses: actions/checkout@v4
       - run: docker build ./${{ matrix.service }}
