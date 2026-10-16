@@ -24,7 +24,9 @@ See [docs/architecture.md](docs/architecture.md) for how the pieces fit
 together, [docs/plane-setup.md](docs/plane-setup.md) for why Plane isn't
 in `docker-compose.yml`, [docs/llm-backend.md](docs/llm-backend.md) for
 the LLM backend choice, [docs/case-study.md](docs/case-study.md) for the
-project written up for a non-technical reader, and [docs/roadmap.md](docs/roadmap.md) for what's
+project written up for a non-technical reader
+(a one-page PDF version: [docs/case-study-one-pager.pdf](docs/case-study-one-pager.pdf),
+regenerated with `python scripts/make_case_study_pdf.py`), and [docs/roadmap.md](docs/roadmap.md) for what's
 done, what's next, and what's deliberately out of scope for now.
 
 ## Repo layout
