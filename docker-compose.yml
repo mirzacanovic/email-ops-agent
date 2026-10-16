@@ -34,13 +34,53 @@ services:
     volumes:
       - ./email-simulator/src/email_simulator/fixtures:/app/fixtures:ro
 
+  # ---- Optional: read a real mailbox over IMAP instead of the simulator ----
+  # Opt-in (`docker compose --profile imap up -d`) so the default stack is
+  # unchanged. imap-bridge serves the same GET /messages contract as the
+  # simulator, read-only; greenmail is a throwaway local IMAP/SMTP server for
+  # trying it without a real mailbox. To use a real mailbox, set IMAP_HOST /
+  # IMAP_USER / IMAP_PASSWORD (and IMAP_SSL=true, IMAP_PORT=993) in .env and
+  # skip greenmail. Both publish on 127.0.0.1 only: the bridge serves mail
+  # content without a login, so it must not be reachable from the network.
+  greenmail:
+    image: greenmail/standalone:2.1.3
+    profiles: ["imap"]
+    restart: unless-stopped
+    environment:
+      GREENMAIL_OPTS: >-
+        -Dgreenmail.setup.test.smtp -Dgreenmail.setup.test.imap
+        -Dgreenmail.hostname=0.0.0.0
+        -Dgreenmail.users=${IMAP_USER:-demo}:${IMAP_PASSWORD:-demo-password}@demo-company.test
+    ports:
+      - "127.0.0.1:${GREENMAIL_SMTP_PORT:-3025}:3025"
+      - "127.0.0.1:${GREENMAIL_IMAP_PORT:-3143}:3143"
+
+  imap-bridge:
+    build: ./imap-bridge
+    profiles: ["imap"]
+    restart: unless-stopped
+    environment:
+      IMAP_HOST: ${IMAP_HOST:-greenmail}
+      IMAP_PORT: ${IMAP_PORT:-3143}
+      IMAP_SSL: ${IMAP_SSL:-false}
+      IMAP_USER: ${IMAP_USER:-demo}
+      IMAP_PASSWORD: ${IMAP_PASSWORD:-}
+      IMAP_FOLDER: ${IMAP_FOLDER:-INBOX}
+      IMAP_LOOKBACK_DAYS: ${IMAP_LOOKBACK_DAYS:-14}
+      IMAP_MAX_MESSAGES: ${IMAP_MAX_MESSAGES:-200}
+    ports:
+      - "127.0.0.1:${IMAP_BRIDGE_PORT:-8002}:8002"
+
   app:
     build: ./app
     restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://${APP_DB_USER}:${APP_DB_PASSWORD}@app-db:5432/${APP_DB_NAME}
-      EMAIL_SIMULATOR_URL: http://email-simulator:8001
+      # Where emails come from: the simulator by default. To read a real (or
+      # sandbox) mailbox instead, start the `imap` profile and set
+      # EMAIL_SOURCE_URL=http://imap-bridge:8002 in .env; see README.
+      EMAIL_SIMULATOR_URL: ${EMAIL_SOURCE_URL:-http://email-simulator:8001}
       ESPOCRM_BASE_URL: http://espocrm:80
       LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
       OLLAMA_BASE_URL: http://ollama:11434

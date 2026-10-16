@@ -115,8 +115,11 @@ and a real Plane workspace rather than mocks.
 
 Said plainly, because a client will ask:
 
-- It reads from an email **simulator**, not a real inbox. A real inbox is the
-  first step of a pilot, against a sandboxed domain.
+- It reads from an email **simulator** by default. An optional read-only IMAP
+  bridge reads a real mailbox and has been tried only against a local sandbox
+  server: not yet a real provider, no OAuth, no sender verification, and no
+  retention policy for stored email. A real inbox is the first step of a
+  pilot, against a sandboxed domain.
 - A reviewer can edit the proposed text before approving, but edits are plain
   text boxes (descriptions are raw HTML), and every reviewer can approve
   everything: no roles, no second approver.
@@ -203,7 +206,7 @@ Docker Compose; GitHub Actions.
 
 ## If this were a client engagement
 
-A pilot would swap the simulator for a sandboxed real inbox, add one or two
+A pilot would point the IMAP bridge at a sandboxed real inbox, add one or two
 of the client's own systems as adapters, and run in approval-only mode for a
 few weeks. That produces the accuracy data needed to decide, per action
 type, whether anything can safely skip review.

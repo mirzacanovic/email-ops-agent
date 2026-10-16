@@ -1,7 +1,7 @@
 # Architecture
 
 ```
-Email simulator ──▶ ingestion ──▶ classify ──▶ extract ──▶ match ──▶ propose
+Email source    ──▶ ingestion ──▶ classify ──▶ extract ──▶ match ──▶ propose
                                                                         │
                                                                         ▼
                                                                     approval
@@ -73,9 +73,11 @@ Email simulator ──▶ ingestion ──▶ classify ──▶ extract ──�
   the follow-up's content would silently destroy the original bug
   report.
 
-- **The email simulator is a separate service, not a module**, so it can
-  later be swapped for a real IMAP/webhook listener without touching the
-  orchestrator's ingestion contract (just the URL it polls).
+- **The email source is a separate service, not a module**, so it can be
+  swapped without touching the orchestrator's ingestion contract (just the
+  URL it polls). The simulator serves fixtures; the optional `imap-bridge`
+  serves the same `GET /messages` shape from a real IMAP mailbox, read-only
+  ([docs/imap-inbox.md](imap-inbox.md)). The pipeline did not change.
 
 ## Data flow through the audit DB
 

@@ -146,8 +146,14 @@ issue, and a rejected Lead update wrote nothing.
 
 - **More systems**: Zammad (helpdesk), ERPNext — same connector
   interface, new adapters, no pipeline changes.
-- **Real inbox** instead of the simulator, once there's a pilot client —
-  a sandboxed domain first.
+- **Real inbox** instead of the simulator, once there's a pilot client — a
+  sandboxed domain first. **Started:** an optional read-only IMAP bridge
+  ([imap-inbox.md](imap-inbox.md)) reads a mailbox through the same contract and
+  has run against a local sandbox server (SMTP in, bridge out, proposals made,
+  messages left unread). **Still to do before a pilot:** a real provider, TLS
+  against a real server, OAuth (many accounts no longer allow passwords),
+  SPF/DKIM checking of senders, and a retention policy for stored email bodies
+  (the audit tables keep them indefinitely).
 - **Multi-step workflows**: one email triggering actions across more
   than one system (CRM update + project task + helpdesk ticket from a
   single message).
