@@ -130,6 +130,37 @@ executions succeeded. The "median time to decision" tile is only meaningful
 with a real reviewer; scripted approvals make it near-instant, so don't
 quote it from a rehearsal.
 
+## Recording the walkthrough
+
+The recording is the one piece of the portfolio that has to be made by a person,
+and it is the last `[TODO]` in [case-study.md](case-study.md). A few things
+make it go well:
+
+- **Record from a clean slate, after a dry run.** Use the `demo-runbook` skill
+  (or its preflight script) and start from "Ready for a clean demo". Do the
+  whole thing once without recording first; the dry run is where surprises show.
+- **Keep it to about 8 minutes.** Cut the waiting in editing: each email takes
+  3-4 minutes, so speed up or jump-cut over the "N of M emails done" banner
+  rather than narrating dead air. Do not cut the moments a person decides.
+- **Shot list:** (1) 20 s on the problem and the one-line flow (the diagram in
+  [architecture.md](architecture.md)); (2) Act 1: proposals appear, open one
+  and read the rationale, use *Edit before approving* on one, approve, then
+  show the real Plane item and Lead; (3) Act 2: the follow-ups become updates,
+  and the Plane issue still has one item; (4) Act 3: the spam and the vague
+  email escalate, and reject if the model proposes a record for the spam;
+  (5) `/metrics`, then 20 s on what it does not do yet.
+- **Say the honest parts.** The case study already states the limits (one run,
+  small sample, weak confidence signal, simulated inbox). A viewer who hears
+  them from you trusts the rest more.
+- **Keep secrets off screen.** The browser's login prompt hides the password,
+  but do not open `.env`, the EspoCRM admin page with its API key, or Adminer
+  while it is recording, and use a throwaway browser profile if your tabs show
+  anything personal. Everything in the demo data is synthetic.
+- **When it exists,** host it somewhere you control (unlisted video link is
+  fine), put the link in `case-study.md` in place of the `[TODO]`, delete the
+  "Draft" note at the top, and regenerate the one-pager if you want the link on
+  it (`scripts/make_case_study_pdf.py`).
+
 ## Resetting
 
 `scripts/release_demo_emails.sh reset` re-hides the act 2 and 3 emails; it does
