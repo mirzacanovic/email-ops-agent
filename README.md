@@ -88,7 +88,8 @@ email-ops-agent/
    poll: it reports whether the database is up and the model is actually
    loaded. `docker compose up` loads the model for you (the `ollama-warm`
    service) and keeps it resident (`OLLAMA_KEEP_ALIVE`, 24 h by default), but
-   the first load takes about 20 minutes on CPU.
+   the first load takes a few minutes on CPU (about 3 with free memory; it
+   took ~20 when the machine was nearly out of RAM).
 10. Review proposals: http://localhost:8000/approvals — approve calls the
     target system's API for real (EspoCRM if `ESPOCRM_API_KEY` is set;
     Plane if `PLANE_*` is configured), reject just records the decision.

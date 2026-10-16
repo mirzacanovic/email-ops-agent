@@ -125,8 +125,8 @@ def check_model(env: dict[str, str], deep: bool) -> None:
         record(
             "FAIL",
             "Model is not loaded (cold)",
-            "A cold 7B load took ~20-30 minutes here, and the app's 300 s timeout aborts it, "
-            "so the first poll can never succeed on a cold model.",
+            "A cold 7B load took ~3 minutes with free RAM but ~20 when the host was short of memory, "
+            "and the app's 300 s timeout aborts a slow one, so a poll on a cold model can fail.",
             f"Run once and wait for it to return (Git Bash): {warm_cmd}",
         )
         return

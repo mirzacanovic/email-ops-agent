@@ -106,8 +106,9 @@ fixtures and on five unseen emails (5 of 5 as expected). Both are single runs:
 
 **Fixed (robustness pass):**
 
-- *Cold start*: the first load of the 7B model took ~19 minutes, and the
-  app's 5-minute timeout aborted it every time, so a cold stack never recovered.
+- *Cold start*: the first load of the 7B model took ~19 minutes when the host
+  was nearly out of memory (about 3 with free RAM, measured later), and the
+  app's 5-minute timeout aborted a slow one, so a cold stack could fail to recover.
   `docker-compose.yml` now sets `OLLAMA_KEEP_ALIVE` (24 h by default) and has a
   one-shot `ollama-warm` service that loads the model during `docker compose
   up`. `GET /ready` reports 503 until the database is up and the model is
@@ -121,9 +122,17 @@ fixtures and on five unseen emails (5 of 5 as expected). Both are single runs:
   same numbers. The synchronous `/ingest/poll` is kept. Job state is
   in-memory and single-process, like the poll lock.
 
-Not yet confirmed on a cold start: the warm-up service itself (a cold load takes
-~20 minutes, and recreating the Ollama container would trigger one), so that
-part is verified by config validation and reading, not by a run.
+**Confirmed live (acceptance run, 2026-10-16).** Starting the whole stack from a
+fully stopped state (a real cold start): `OLLAMA_KEEP_ALIVE=24h` was set in the
+Ollama container; `ollama-warm` started after `ollama-pull` finished and began
+the load by itself; `/ready` returned 503 with a reason while `/health` returned
+200, then flipped to 200 after 3 min 12 s with no aborted loads; the model then
+stayed resident for 24 h. The background poll was driven from a real browser (the
+"N of M emails done" banner and refresh), and `Approve`, `Edit before approving`
+and `Reject` all worked in a real browser under the CSRF rules. An edit reached
+the real Plane issue: the audit trail shows `edited` (approver `demo`) with the
+reviewer's text, the original proposal unchanged beside it, no duplicate
+issue, and a rejected Lead update wrote nothing.
 
 **Still open:**
 

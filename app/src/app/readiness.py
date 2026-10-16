@@ -1,9 +1,9 @@
 """GET /ready: can this stack process an email right now?
 
 Separate from /health on purpose. /health only says the app process is up,
-which is true minutes or even half an hour before the model is: a cold load of
-the 7B model took ~20 minutes on CPU, and polling during it fails and restarts
-the load. /ready is the one to wait on before a demo or a first poll.
+which is true minutes before the model is: a cold load of the 7B model took
+~3 minutes on CPU with free memory and ~20 when the host was short of it, and
+polling during it can fail and restart the load. /ready is the one to wait on before a demo or a first poll.
 
 Open (no login) like /health; it returns only booleans and short reasons.
 """
@@ -49,7 +49,7 @@ def _llm() -> dict[str, object]:
         "provider": "ollama",
         "ready": False,
         "model": settings.ollama_model,
-        "detail": "model not loaded yet (a cold load can take 20+ minutes); see docker compose logs ollama",
+        "detail": "model not loaded yet (a cold load takes a few minutes, longer if memory is short); see docker compose logs ollama",
     }
 
 

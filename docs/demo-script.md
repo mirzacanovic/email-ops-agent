@@ -13,7 +13,8 @@ what it has already seen, and the cases where it deliberately *doesn't* act.
 ## Before you start
 
 **Wait for the model to be loaded.** On the rehearsal machine the first load
-of the 7B model took ~19 minutes. `docker compose up` now starts it loading
+of the 7B model took ~19 minutes when the machine was nearly out of memory and
+about 3 with free RAM. `docker compose up` now starts it loading
 (the `ollama-warm` service) and keeps it resident for 24 hours, but you still
 have to wait: `curl localhost:8000/ready` returns 503 until the model is
 loaded and 200 when it is. Do this well before the audience arrives. (If the

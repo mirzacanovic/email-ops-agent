@@ -42,11 +42,13 @@ In this order, because later steps depend on earlier ones:
    `ollama-warm` service) and `GET /ready` on the app answers 503 until the
    model is loaded and 200 when it is. If the stack was already running without
    that service, run the warm-up command the preflight prints instead and wait
-   for it to return. A cold load took 20-30 minutes on this machine, and Ollama
+   for it to return. A cold load took about 3 minutes with free RAM and ~20 minutes when
+   the host was nearly out of memory, and Ollama
    only reports the model as loaded once it is fully ready, so the wait is
    the point. The app's own requests time out after 5 minutes and abort the
    load each time, so polling before the model is loaded makes things worse,
-   not better. Run it in the background and tell the user it is a long wait.
+   not better. Run it in the background; free RAM first, since memory pressure is what
+   made the load slow.
 3. **Audit DB not empty.** Already-processed emails are skipped by design, so
    old rows stop the acts from replaying. This deletes audit rows, so confirm
    with the user first, and take the data-only `pg_dump` backup before the
