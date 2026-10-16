@@ -163,8 +163,9 @@ What it showed, including the parts that don't flatter the model:
   the case for a larger model, and the reason the review UI lets a person edit
   the proposal before approving it.
 - **It is slow on CPU**: roughly 3 to 4 minutes per email, and the first
-  model load took about 19 minutes. Fine for an approval-queue pilot, not for
-  anything interactive.
+  model load took about 3 minutes with free memory (about 19 when the machine
+  was nearly out of RAM). Fine for an approval-queue pilot, not for anything
+  interactive.
 
 **Second run, after a prompt change (2026-10-15).** I rewrote the
 classification and extraction prompts to address those failures, fixed the
